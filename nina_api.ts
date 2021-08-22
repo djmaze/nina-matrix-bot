@@ -32,6 +32,10 @@ type NinaResponseItem = {
   sent: string
 }
 
+type NinaResponseItemWithDates = NinaResponseItem & {
+  sentDate: Date
+}
+
 type NinaResponse = NinaResponseItem[]
 
 type NinaArea = {
@@ -100,10 +104,12 @@ export default class NinaWarnings {
 
     const items = response
       .filter((item) => item.payload.version >= 2)
+      .map<NinaResponseItemWithDates>((item) => ({ ...item, sentDate: new Date(item.sent) }))
       .filter((item) => {
         const sent = new Date(item.sent)
         return (!since || sent > since) && this.daysSince(sent) < DAYS_SINCE
       })
+      .sort((a, b) => a.sentDate.getTime() - b.sentDate.getTime())
 
     if (items.length)
       lastSent = new Date(items[items.length - 1].sent)
@@ -132,7 +138,7 @@ export default class NinaWarnings {
     return (now - date.getTime()) / (1000 * 60 * 60 * 24)
   }
 
-  private mapMowasData(item: NinaResponseItem) : WarnItem {
+  private mapMowasData(item: NinaResponseItemWithDates) : WarnItem {
     const data = item.payload.data
     const mowasId = item.id.substr(4)
     const mowasItem = this.warnLists.mowasItems.find((ds) => ds.identifier === mowasId)
@@ -154,12 +160,12 @@ export default class NinaWarnings {
         certainty: info.certainty,
         web: info.web,
         areaDesc: this.areaDesc(info.area),
-        sent: new Date(item.sent)
+        sent: item.sentDate
       }
     } else throw Error(`Mowas-Item for ${item.id} not found`)
   }
 
-  private async mapKatwarnData(item: NinaResponseItem) : Promise<WarnItem> {
+  private async mapKatwarnData(item: NinaResponseItemWithDates) : Promise<WarnItem> {
     const data = item.payload.data
     const katwarnItem = await this.getKatwarnItem(item.id)
     console.debug("data", data)
@@ -178,7 +184,7 @@ export default class NinaWarnings {
         msgType: data.msgType,
         provider: data.provider,
         areaDesc: this.areaDesc(info.area),
-        sent: new Date(item.sent)
+        sent: item.sentDate
       }
     } else throw Error(`Katwarn-Item for ${item.id} not found`)
   }
@@ -196,7 +202,7 @@ export default class NinaWarnings {
     return await response.json()
   }
 
-  private mapDwdData(item: NinaResponseItem) : WarnItem {
+  private mapDwdData(item: NinaResponseItemWithDates) : WarnItem {
     const data = item.payload.data
     const dwdId = item.id.substr(4)
     const dwdItem = this.warnLists.dwdItems.find((item) => item.identifier === dwdId)
@@ -217,7 +223,7 @@ export default class NinaWarnings {
           certainty: info.certainty,
           web: info.web,
           areaDesc: this.areaDesc(info.area),
-          sent: new Date(item.sent)
+          sent: item.sentDate
       }
     } else throw Error(`Dwd-Item for ${item.id} not found`)
   }
