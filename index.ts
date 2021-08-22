@@ -177,10 +177,10 @@ async function loadWarnings(roomLocation: RoomLocation, warnings: NinaWarnings, 
     if (item.effective || item.onset || item.expires) {
       const items: Array<[string, Date]> = []
 
-      if (item.effective)
+      if (item.effective && item.effective !== item.onset)
         items.push(['Wirksam ab', item.effective])
       if (item.onset)
-        items.push(['Gültig ab', item.onset])
+        items.push(['Gültig von', item.onset])
       if (item.expires)
         items.push(['Gültig bis', item.expires])
 
