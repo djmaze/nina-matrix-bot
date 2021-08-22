@@ -1,5 +1,7 @@
 FROM node:14
 
+ENV TZ=Europe/Berlin
+
 USER node
 WORKDIR /home/node/app
 
