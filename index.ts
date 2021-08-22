@@ -126,7 +126,7 @@ async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []>
       if (e.body.errcode !== "M_NOT_FOUND")
         throw e
     }
-    const lastSent = lastSentEvent ? new Date(lastSentEvent.value) : undefined
+    const lastSent = (lastSentEvent && lastSentEvent.value) ? new Date(lastSentEvent.value) : undefined
 
     return [location, lastSent]
   }
