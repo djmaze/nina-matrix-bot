@@ -160,8 +160,8 @@ async function setupRoom(roomLocation: RoomLocation, since?: Date) {
 async function loadWarnings(roomLocation: RoomLocation, warnings: NinaWarnings, since?: Date) : Promise<Date | undefined> {
   const [items, lastSent] = await warnings.get(since)
   items.forEach((item) => {
-    const data = [item.sent.toLocaleDateString('de-DE'), item.msgType, item.urgency, item.severity, item.certainty, item.provider]
-      .filter((item) => item)
+    const date = [item.sent.toLocaleDateString('de-DE'), item.sent.toLocaleTimeString('de-DE'), "Uhr"].join(" ")
+    const data = [date, item.msgType, item.urgency, item.severity, item.certainty, item.provider]
       .join(" | ")
 
     let html = `
