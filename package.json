@@ -2,15 +2,21 @@
   "name": "nina-matrix-bot",
   "version": "0.1.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
   "dependencies": {
     "matrix-bot-sdk": "^0.5.19",
     "node-fetch": "^2.6.1",
     "typescript": "^4.3.5"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@tsconfig/node14": "^1.0.1",
+    "@types/node-fetch": "^2.5.12"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "start": "node src/index.js"
   },
   "author": "",
   "license": "ISC"

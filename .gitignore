@@ -1,4 +1,4 @@
 /.env
-/*.js
+*.js
 /bot.json
 /node_modules
