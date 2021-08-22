@@ -160,15 +160,34 @@ async function setupRoom(roomLocation: RoomLocation, since?: Date) {
 async function loadWarnings(roomLocation: RoomLocation, warnings: NinaWarnings, since?: Date) : Promise<Date | undefined> {
   const [items, lastSent] = await warnings.get(since)
   items.forEach((item) => {
-    const date = [item.sent.toLocaleDateString('de-DE'), item.sent.toLocaleTimeString('de-DE'), "Uhr"].join(" ")
+    const date = localizedDateAndTime(item.sent)
     const data = [date, item.msgType, item.urgency, item.severity, item.certainty, item.provider]
       .join(" | ")
 
     let html = `
       <p><i>${data}</i></p>
       <p><b>${item.event ? "[" + item.event + "]" : ""} ${item.headline}</b></p>
-      <p><i>${item.areaDesc}</i></p>
     `
+
+    if (item.effective || item.onset || item.expires) {
+      const items: Array<[string, Date]> = []
+
+      if (item.effective)
+        items.push(['Wirksam ab', item.effective])
+      if (item.onset)
+        items.push(['Gültig ab', item.onset])
+      if (item.expires)
+        items.push(['Gültig bis', item.expires])
+
+      const item_html = items
+        .map(([text, date]) => "<i>" + [text, localizedDateAndTime(date)].join(": ") + "</i>")
+        .join("<br>")
+
+      html += "<p>" + item_html + "</p>"
+    }
+
+    html += `<p><i>${item.areaDesc}</i></p>`
+
     if (item.description)
       html += `<p>${item.description}</p>`
     if (item.instruction)
@@ -306,4 +325,8 @@ async function invalidCommand(roomId: string) {
   const reply = RichReply.createFor(roomId, event, replyBody, replyBody);
   reply["msgtype"] = "m.text";
   client.sendMessage(roomId, reply);
+}
+
+function localizedDateAndTime(date: Date) : string {
+  return [date.toLocaleDateString('de-DE'), date.toLocaleTimeString('de-DE'), "Uhr"].join(" ")
 }

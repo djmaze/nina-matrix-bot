@@ -74,6 +74,9 @@ export type WarnItem = {
   web?: string
   areaDesc: string
   sent: Date
+  effective?: Date
+  onset?: Date
+  expires?: Date
 }
 
 export default class NinaWarnings {
@@ -184,7 +187,8 @@ export default class NinaWarnings {
         msgType: data.msgType,
         provider: data.provider,
         areaDesc: this.areaDesc(info.area),
-        sent: item.sentDate
+        sent: item.sentDate,
+        effective: new Date(info.effective)
       }
     } else throw Error(`Katwarn-Item for ${item.id} not found`)
   }
@@ -223,7 +227,10 @@ export default class NinaWarnings {
           certainty: info.certainty,
           web: info.web,
           areaDesc: this.areaDesc(info.area),
-          sent: item.sentDate
+          sent: item.sentDate,
+          effective: info.effective ? new Date(info.effective) : undefined,
+          onset: info.onset ? new Date(info.onset) : undefined,
+          expires: info.expires ? new Date(info.expires) : undefined
       }
     } else throw Error(`Dwd-Item for ${item.id} not found`)
   }
