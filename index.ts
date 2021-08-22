@@ -170,8 +170,8 @@ async function loadWarnings(roomLocation: RoomLocation, warnings: NinaWarnings, 
       .join(" | ")
 
     let html = `
-      <p><i>${data}</i></p>
       <p><b>${item.event ? "[" + item.event + "]" : ""} ${item.headline}</b></p>
+      <p><i>${data}</i></p>
     `
 
     if (item.effective || item.onset || item.expires) {
