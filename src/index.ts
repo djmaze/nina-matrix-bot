@@ -221,7 +221,7 @@ async function joinedMembers(roomId: string) : Promise<number> {
 }
 
 async function showHelp(roomId: string) {
-  const text = `<p>Hallo, ich bin Nina!</p>
+  const text = `<p>Hallo, ich bin MINA!</p>
     
 <p>Ich darf mich kurz vorstellen: Ich bin ein Bot, der dich über Warnmeldungen an deinem angegebenen Ort informiert.</p>
 
