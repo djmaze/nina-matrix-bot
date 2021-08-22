@@ -1,7 +1,7 @@
-import { AutojoinRoomsMixin, AutojoinUpgradedRoomsMixin, MatrixClient, MatrixEvent, RichReply, SimpleFsStorageProvider } from 'matrix-bot-sdk'
+import { AutojoinRoomsMixin, MatrixClient, MatrixEvent, RichReply, SimpleFsStorageProvider } from "matrix-bot-sdk"
 import AGSSearch from "./ags"
-import NinaWarnings, { WarnItem } from "./nina_api"
-import WarnLists from './warn_lists';
+import NinaWarnings from "./nina_api"
+import WarnLists from "./warn_lists"
 
 const homeserverUrl = process.env.HOMESERVER_URL // make sure to update this with your url
 const accessToken = process.env.ACCESS_TOKEN
@@ -67,18 +67,18 @@ client.on("room.message", async (roomId, event: MatrixMessageEvent) => {
   const sender = event.sender
   const body = event.content.body.trim()
 
-  if (body.startsWith('!')) {
+  if (body.startsWith("!")) {
     console.log(`${roomId}: ${sender} says '${body}'`)
 
-    if (body.startsWith('!hilfe')) {
+    if (body.startsWith("!hilfe")) {
       await showHelp(roomId)
-    } else if (body.startsWith('!suche')) {
+    } else if (body.startsWith("!suche")) {
       const location = body.split(" ")[1]
       await search(roomId, event, location)
-    } else if (body.startsWith('!abonniere')) {
+    } else if (body.startsWith("!abonniere")) {
       const locationCode = body.split(" ")[1]
       await subscribe(roomId, event, locationCode)
-    } else if (body.startsWith('!deabonniere')) {
+    } else if (body.startsWith("!deabonniere")) {
       await unsubscribe(roomId, event)
     } else {
       await invalidCommand(roomId, event)
@@ -118,8 +118,8 @@ async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []>
   try {
     location = await client.getRoomStateEvent(roomId, LOCATION_EVENT_TYPE, "")
   } catch (e) {
-      if (e.body.errcode !== "M_NOT_FOUND")
-        throw e
+    if (e.body.errcode !== "M_NOT_FOUND")
+      throw e
   }
 
   if (location && location.name) {
@@ -178,11 +178,11 @@ async function loadWarnings(roomLocation: RoomLocation, warnings: NinaWarnings, 
       const items: Array<[string, Date]> = []
 
       if (item.effective && item.effective !== item.onset)
-        items.push(['Wirksam ab', item.effective])
+        items.push(["Wirksam ab", item.effective])
       if (item.onset)
-        items.push(['Gültig von', item.onset])
+        items.push(["Gültig von", item.onset])
       if (item.expires)
-        items.push(['Gültig bis', item.expires])
+        items.push(["Gültig bis", item.expires])
 
       const item_html = items
         .map(([text, date]) => "<i>" + [text, localizedDateAndTime(date)].join(": ") + "</i>")
@@ -214,10 +214,10 @@ async function saveLastSent(roomId: string, lastSent: Date) {
 }
 
 async function joinedMembers(roomId: string) : Promise<number> {
-    const memberEvents = await client.getRoomMembers(roomId)
-    return memberEvents
-      .filter((event) => event.content.membership === "join")
-      .length
+  const memberEvents = await client.getRoomMembers(roomId)
+  return memberEvents
+    .filter((event) => event.content.membership === "join")
+    .length
 }
 
 async function showHelp(roomId: string) {
@@ -256,18 +256,18 @@ async function search(roomId: string, event: MatrixMessageEvent, location: strin
     replyBody = `<p>Der Code für <i>${possibleLocations[0].name}</i> lautet: <code>${possibleLocations[0].code}</code></p>`
     replyBody += `<p>Jetzt abonnieren mit <code>!abonniere ${possibleLocations[0].code}</code></p>`
   } else if (possibleLocations.length > 1) {
-    replyBody = `<p>Mögliche Locations:</p><ul>`
+    replyBody = "<p>Mögliche Locations:</p><ul>"
     possibleLocations.forEach(({code, name}) => {
       replyBody += `<li>${code} ${name}</li>`
     })
     replyBody += "</ul>"
-    replyBody += `<p>Jetzt abonnieren mit <code>!abonniere DER-PASSENDE-CODE</code></p>`
+    replyBody += "<p>Jetzt abonnieren mit <code>!abonniere DER-PASSENDE-CODE</code></p>"
   } else {
     replyBody = "<strong>Kein Code für diese Location gefunden!</strong>"
   }
-  const reply = RichReply.createFor(roomId, event, replyBody, replyBody);
-  reply["msgtype"] = "m.text";
-  client.sendMessage(roomId, reply);
+  const reply = RichReply.createFor(roomId, event, replyBody, replyBody)
+  reply["msgtype"] = "m.text"
+  client.sendMessage(roomId, reply)
 }
 
 async function subscribe(roomId: string, event: MatrixMessageEvent, locationCode: string) {
@@ -277,27 +277,27 @@ async function subscribe(roomId: string, event: MatrixMessageEvent, locationCode
   const location = agsSearch.get(locationCode)
   if (!location) {
     const replyBody = "Die angegebene Location ist leider ungültig!"
-    const reply = RichReply.createFor(roomId, event, replyBody, replyBody);
-    reply["msgtype"] = "m.text";
-    client.sendMessage(roomId, reply);
+    const reply = RichReply.createFor(roomId, event, replyBody, replyBody)
+    reply["msgtype"] = "m.text"
+    client.sendMessage(roomId, reply)
     return 
   }
 
   try {
-    const eventId = await client.sendStateEvent(roomId, LOCATION_EVENT_TYPE, "", {code: locationCode, name: location.name})
+    await client.sendStateEvent(roomId, LOCATION_EVENT_TYPE, "", {code: locationCode, name: location.name})
   } catch {
-    const replyBody = `Bitte gib mir Moderatoren-Berechtigungen, damit ich meine Einstellungen im Raum speichern kann!`
-    const reply = RichReply.createFor(roomId, event, replyBody, replyBody);
-    reply["msgtype"] = "m.text";
-    client.sendMessage(roomId, reply);
+    const replyBody = "Bitte gib mir Moderatoren-Berechtigungen, damit ich meine Einstellungen im Raum speichern kann!"
+    const reply = RichReply.createFor(roomId, event, replyBody, replyBody)
+    reply["msgtype"] = "m.text"
+    client.sendMessage(roomId, reply)
     return
   }
   console.log(`subscribed ${roomId} to ${locationCode}`)
   
   const replyBody = `Danke, du wirst jetzt für die Location <i>${location.name}</i> gewarnt`
-  const reply = RichReply.createFor(roomId, event, replyBody, replyBody);
-  reply["msgtype"] = "m.notice";
-  client.sendMessage(roomId, reply);
+  const reply = RichReply.createFor(roomId, event, replyBody, replyBody)
+  reply["msgtype"] = "m.notice"
+  client.sendMessage(roomId, reply)
 
   setupRoom({
     id: roomId,
@@ -317,9 +317,9 @@ async function unsubscribe(roomId: string, event: MatrixMessageEvent) {
     rooms.splice(rooms.indexOf(room), 1)
 
     const replyBody = `Okay, ab sofort erhältst du keine Warnungen mehr für <i>${room.location.name}</i>.`
-    const reply = RichReply.createFor(roomId, event, replyBody, replyBody);
-    reply["msgtype"] = "m.notice";
-    client.sendMessage(roomId, reply);
+    const reply = RichReply.createFor(roomId, event, replyBody, replyBody)
+    reply["msgtype"] = "m.notice"
+    client.sendMessage(roomId, reply)
 
     console.log(`unsubscribed ${roomId} from ${room.location.name}`)
   }
@@ -327,11 +327,11 @@ async function unsubscribe(roomId: string, event: MatrixMessageEvent) {
 
 async function invalidCommand(roomId: string, event: MatrixMessageEvent) {
   const replyBody = "Den angebenen Befehl kenne ich nicht! Probier mal: <code>!hilfe</code>"
-  const reply = RichReply.createFor(roomId, event, replyBody, replyBody);
-  reply["msgtype"] = "m.text";
-  client.sendMessage(roomId, reply);
+  const reply = RichReply.createFor(roomId, event, replyBody, replyBody)
+  reply["msgtype"] = "m.text"
+  client.sendMessage(roomId, reply)
 }
 
 function localizedDateAndTime(date: Date) : string {
-  return [date.toLocaleDateString('de-DE'), date.toLocaleTimeString('de-DE'), "Uhr"].join(" ")
+  return [date.toLocaleDateString("de-DE"), date.toLocaleTimeString("de-DE"), "Uhr"].join(" ")
 }

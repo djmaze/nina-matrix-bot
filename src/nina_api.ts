@@ -120,14 +120,14 @@ export default class NinaWarnings {
     const warnItems = await Promise.all(items.map(async (item) => {
       const provider = item.payload.data.provider
       switch (provider) {
-        case "MOWAS":
-          return this.mapMowasData(item)
-        case "KATWARN":
-          return await this.mapKatwarnData(item)
-        case "DWD":
-          return this.mapDwdData(item)
-        default:
-          throw Error(`Unhandled provider ${provider}`)
+      case "MOWAS":
+        return this.mapMowasData(item)
+      case "KATWARN":
+        return await this.mapKatwarnData(item)
+      case "DWD":
+        return this.mapDwdData(item)
+      default:
+        throw Error(`Unhandled provider ${provider}`)
       } 
     }))
     warnItems.sort((a, b) => a.sent.getTime() - b.sent.getTime())
@@ -216,26 +216,26 @@ export default class NinaWarnings {
     if (dwdItem) {
       const info = dwdItem.info[0]
       return {
-          event: info.event,
-          headline: data.headline,
-          description: info.description,
-          instruction: info.instruction,
-          msgType: data.msgType,
-          provider: data.provider,
-          urgency: info.urgency,
-          severity: data.severity,
-          certainty: info.certainty,
-          web: info.web,
-          areaDesc: this.areaDesc(info.area),
-          sent: item.sentDate,
-          effective: info.effective ? new Date(info.effective) : undefined,
-          onset: info.onset ? new Date(info.onset) : undefined,
-          expires: info.expires ? new Date(info.expires) : undefined
+        event: info.event,
+        headline: data.headline,
+        description: info.description,
+        instruction: info.instruction,
+        msgType: data.msgType,
+        provider: data.provider,
+        urgency: info.urgency,
+        severity: data.severity,
+        certainty: info.certainty,
+        web: info.web,
+        areaDesc: this.areaDesc(info.area),
+        sent: item.sentDate,
+        effective: info.effective ? new Date(info.effective) : undefined,
+        onset: info.onset ? new Date(info.onset) : undefined,
+        expires: info.expires ? new Date(info.expires) : undefined
       }
     } else throw Error(`Dwd-Item for ${item.id} not found`)
   }
 
-  private areaDesc(areas: any[]) : string {
+  private areaDesc(areas: NinaArea[]) : string {
     return areas.map((area) => area.areaDesc).join(", ")
   }
 }

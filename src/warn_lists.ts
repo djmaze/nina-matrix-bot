@@ -61,12 +61,12 @@ export default class WarnLists {
   // katwarnItems: KatwarnItem[] = []
   dwdItems: DwdItem[] = []
 
-  async get() {
+  async get() : Promise<void> {
     if (!this.mowasItems)
       await this.update()
   }
 
-  async update() {
+  async update() : Promise<void> {
     this.mowasItems = await this.getMowasItems()
     // this.katwarnItems = await this.getKatwarnItems()
     this.dwdItems = await this.getDwdItems()
