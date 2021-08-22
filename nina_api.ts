@@ -34,6 +34,10 @@ type NinaResponseItem = {
 
 type NinaResponse = NinaResponseItem[]
 
+type NinaArea = {
+  areaDesc: string
+}
+
 type KatwarnItem = {
   identifier: string
   sent: string
@@ -49,9 +53,7 @@ type KatwarnItem = {
     description: string
     instruction: string
     parameter: any
-    area: {
-      areaDesc: string
-    }[]
+    area: NinaArea[]
   }[]
 }
 
@@ -151,7 +153,7 @@ export default class NinaWarnings {
         severity: data.severity,
         certainty: info.certainty,
         web: info.web,
-        areaDesc: info.area[0].areaDesc,
+        areaDesc: this.areaDesc(info.area),
         sent: new Date(item.sent)
       }
     } else throw Error(`Mowas-Item for ${item.id} not found`)
@@ -175,7 +177,7 @@ export default class NinaWarnings {
         certainty: info.certainty,
         msgType: data.msgType,
         provider: data.provider,
-        areaDesc: info.area[0].areaDesc,
+        areaDesc: this.areaDesc(info.area),
         sent: new Date(item.sent)
       }
     } else throw Error(`Katwarn-Item for ${item.id} not found`)
@@ -214,9 +216,13 @@ export default class NinaWarnings {
           severity: data.severity,
           certainty: info.certainty,
           web: info.web,
-          areaDesc: info.area[0].areaDesc,
+          areaDesc: this.areaDesc(info.area),
           sent: new Date(item.sent)
       }
     } else throw Error(`Dwd-Item for ${item.id} not found`)
+  }
+
+  private areaDesc(areas: any[]) : string {
+    return areas.map((area) => area.areaDesc).join(", ")
   }
 }
