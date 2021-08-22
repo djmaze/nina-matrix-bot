@@ -14,6 +14,11 @@ const storage = new SimpleFsStorageProvider("bot.json")
 const client = new MatrixClient(homeserverUrl!, accessToken!, storage)
 AutojoinRoomsMixin.setupOnClient(client)
 
+type MatrixMessageEvent = MatrixEvent<{
+  msgtype: "m.text"
+  body: string
+}>
+
 type Location = {
   name: string
   code: string
@@ -55,12 +60,12 @@ client.on("room.event", async (roomId, event) => {
   }
 })
 
-client.on("room.message", async (roomId, event) => {
-  if (!event["content"]) return
-  if (event["content"]["msgtype"] !== "m.text") return
+client.on("room.message", async (roomId, event: MatrixMessageEvent) => {
+  if (!event.content) return
+  if (event.content.msgtype !== "m.text") return
 
-  const sender = event["sender"]
-  const body = event["content"]["body"].trim()
+  const sender = event.sender
+  const body = event.content.body.trim()
 
   if (body.startsWith('!')) {
     console.log(`${roomId}: ${sender} says '${body}'`)
@@ -69,14 +74,14 @@ client.on("room.message", async (roomId, event) => {
       await showHelp(roomId)
     } else if (body.startsWith('!suche')) {
       const location = body.split(" ")[1]
-      await search(roomId, location)
+      await search(roomId, event, location)
     } else if (body.startsWith('!abonniere')) {
       const locationCode = body.split(" ")[1]
-      await subscribe(roomId, locationCode)
+      await subscribe(roomId, event, locationCode)
     } else if (body.startsWith('!deabonniere')) {
-      await unsubscribe(roomId)
+      await unsubscribe(roomId, event)
     } else {
-      await invalidCommand(roomId)
+      await invalidCommand(roomId, event)
     }
   }
 })
@@ -243,7 +248,7 @@ async function showHelp(roomId: string) {
   await client.sendHtmlText(roomId, text)
 }
 
-async function search(roomId: string, location: string) {
+async function search(roomId: string, event: MatrixMessageEvent, location: string) {
   await agsSearch.update()
   const possibleLocations = agsSearch.search(location)
   let replyBody: string
@@ -265,7 +270,7 @@ async function search(roomId: string, location: string) {
   client.sendMessage(roomId, reply);
 }
 
-async function subscribe(roomId: string, locationCode: string) {
+async function subscribe(roomId: string, event: MatrixMessageEvent, locationCode: string) {
   await warnLists.update()
   await agsSearch.update()
 
@@ -303,7 +308,7 @@ async function subscribe(roomId: string, locationCode: string) {
   })
 }
 
-async function unsubscribe(roomId: string) {
+async function unsubscribe(roomId: string, event: MatrixMessageEvent) {
   const room = rooms.find((r) => r.id === roomId)
   if (room) {
     if (room.timer) clearInterval(room.timer)
@@ -320,7 +325,7 @@ async function unsubscribe(roomId: string) {
   }
 }
 
-async function invalidCommand(roomId: string) {
+async function invalidCommand(roomId: string, event: MatrixMessageEvent) {
   const replyBody = "Den angebenen Befehl kenne ich nicht! Probier mal: <code>!hilfe</code>"
   const reply = RichReply.createFor(roomId, event, replyBody, replyBody);
   reply["msgtype"] = "m.text";
