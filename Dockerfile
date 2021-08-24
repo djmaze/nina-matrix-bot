@@ -9,6 +9,6 @@ COPY --chown=node package.json package-lock.json ./
 RUN npm install
 
 COPY --chown=node . ./
-RUN npx tsc --strict *.ts
+RUN npm run build
 
-CMD ["node", "index.js"]
+CMD ["npm", "start"]
