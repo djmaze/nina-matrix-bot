@@ -6,6 +6,7 @@ import WarnLists from "./warn_lists"
 const homeserverUrl = process.env.HOMESERVER_URL // make sure to update this with your url
 const accessToken = process.env.ACCESS_TOKEN
 const INTERVAL = parseInt(process.env.INTERVAL_MINUTES || "10") * 60 * 1000
+const FEEDBACK_ROOM = process.env.FEEDBACK_ROOM
 
 const LOCATION_EVENT_TYPE = "de.nina-bot.location"
 const LAST_SENT_TYPE = "de.nina-bot.last-sent"
@@ -218,7 +219,7 @@ async function joinedMembers(roomId: string) : Promise<number> {
 }
 
 async function showHelp(roomId: string) {
-  const text = `<p>Hallo, ich bin MINA!</p>
+  let text = `<p>Hallo, ich bin MINA!</p>
     
 <p>Ich darf mich kurz vorstellen: Ich bin ein Bot, der dich über Warnmeldungen an deinem angegebenen Ort informiert.</p>
 
@@ -242,6 +243,10 @@ async function showHelp(roomId: string) {
 
 <p>Dann bleibt mir jetzt nichts anderes zu tun, als dir <i>Hals und Beinbruch</i> zu wünschen! Auf dass ich dich niemals warnen muss...</p>
   `
+
+  if (FEEDBACK_ROOM)
+    text += `<p>Fragen? Anmerkungen? Fehlermeldungen? Tritt gerne unserem öffentlichen Feedback-Raum unter ${FEEDBACK_ROOM} bei!</p>`
+
   await client.sendHtmlText(roomId, text)
 }
 
