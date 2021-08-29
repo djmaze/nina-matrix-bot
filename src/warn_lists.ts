@@ -1,40 +1,16 @@
 import fetch from "node-fetch"
 
-import { NinaCertainty, NinaMsgType, NinaSeverity, NinaStatus, NinaUrgency } from "./nina_api"
+import { NinaCertainty, NinaMsgType, NinaProvider, NinaSeverity, NinaStatus, NinaUrgency } from "./nina_api"
 
-type MowasItem = {
-  identifier: string
-  status: "Actual"
-  msgType: NinaMsgType
-  info: {
-    event: string
-    urgency: NinaUrgency
-    severity: NinaSeverity
-    certainty: NinaCertainty
-    headline: string
-    description: string
-    instruction: string
-    web: string
-    parameter: any
-    area: {
-      areaDesc: string
-    }[]
-  }[]
+const FEEDS: Record<NinaProvider, string> = {
+  "MOWAS": "https://warnung.bund.de/bbk.mowas/gefahrendurchsagen.json",
+  "DWD": "https://warnung.bund.de/bbk.dwd/unwetter.json",
+  "KATWARN": "https://warnung.bund.de/bbk.katwarn/warnmeldungen.json",
 }
 
-// type KatwarnItem = {
-//   id: string
-//   version: number
-//   startData: string
-//   severity: NinaSeverity
-//   type: NinaMsgType
-//   i18nTitle: {
-//     de: string
-//   }
-// }
-
-type DwdItem = {
+type WarnItem = {
   identifier: string
+  sent: string
   status: NinaStatus
   msgType: NinaMsgType
   info: {
@@ -42,13 +18,13 @@ type DwdItem = {
     urgency: NinaUrgency
     severity: NinaSeverity
     certainty: NinaCertainty
-    effective: string
-    onset: string
-    expires: string
+    effective?: string
+    onset?: string
+    expires?: string
     headline: string
     description: string
     instruction: string
-    web: string
+    web?: string
     parameter: any
     area: {
       areaDesc: string
@@ -57,37 +33,25 @@ type DwdItem = {
 }
 
 export default class WarnLists {
-  mowasItems: MowasItem[] = []
-  // katwarnItems: KatwarnItem[] = []
-  dwdItems: DwdItem[] = []
+  feeds: Record<NinaProvider, WarnItem[]> = {
+    "MOWAS": [],
+    "DWD": [],
+    "KATWARN": []
+  }
+  loaded = false
 
   async get() : Promise<void> {
-    if (!this.mowasItems)
+    if (!this.loaded)
       await this.update()
   }
 
   async update() : Promise<void> {
-    this.mowasItems = await this.getMowasItems()
-    // this.katwarnItems = await this.getKatwarnItems()
-    this.dwdItems = await this.getDwdItems()
+    await Promise.all(Object.entries(FEEDS).map(async ([feed_type, url]) => {
+      const response = await fetch(url)
+
+      this.feeds[feed_type as NinaProvider] = await response.json()
+    }))
+
+    this.loaded = true
   }
-
-  private async getMowasItems() : Promise<MowasItem[]> {
-    const response = await fetch("https://warnung.bund.de/bbk.mowas/gefahrendurchsagen.json")
-
-    return await response.json()
-  }
-
-  // private async getKatwarnItems() : Promise<KatwarnItem[]> {
-  //   const response = await fetch("https://warnung.bund.de/api31/katwarn/mapData.json")
-
-  //   return await response.json()
-  // }
-
-  private async getDwdItems() : Promise<DwdItem[]> {
-    const response = await fetch("https://warnung.bund.de/bbk.dwd/unwetter.json")
-
-    return await response.json()
-  }
-
 }

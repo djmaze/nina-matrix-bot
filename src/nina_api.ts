@@ -6,7 +6,7 @@ const DAYS_SINCE = 365
 
 export type NinaMsgType = "Update"
 
-type NinaProvider = "MOWAS" | "KATWARN" | "DWD"
+export type NinaProvider = "MOWAS" | "KATWARN" | "DWD"
 
 export type NinaSeverity = "Minor" | "Unknown"
 
@@ -42,26 +42,7 @@ type NinaArea = {
   areaDesc: string
 }
 
-type KatwarnItem = {
-  identifier: string
-  sent: string
-  status: NinaStatus
-  info: {
-    event: string
-    urgency: NinaUrgency
-    severity: NinaSeverity
-    certainty: NinaCertainty
-    effective: string
-    senderName: string
-    headline: string
-    description: string
-    instruction: string
-    parameter: any
-    area: NinaArea[]
-  }[]
-}
-
-export type WarnItem = {
+export type MINAWarnItem = {
   headline: string
   description?: string
   instruction?: string
@@ -79,28 +60,102 @@ export type WarnItem = {
   expires?: Date
 }
 
-export default class NinaWarnings {
-  ags: string
-  warnLists: WarnLists
+type SubscribeCallback = (items: MINAWarnItem[], lastSent?: Date) => void
 
-  constructor(ags: string, warnLists: WarnLists) {
-    this.ags = ags.slice(0, -7) + "0000000"
+type CallbackSubscription = { callback: SubscribeCallback, lastSent: Date | undefined }
+
+type Location = { items: MINAWarnItem[], subscriptions: CallbackSubscription[] }
+
+export default class NinaWarnings {
+  warnLists: WarnLists
+  interval: number
+  locations: Record<string, Location> = {}
+
+  constructor(warnLists: WarnLists, interval: number) {
     this.warnLists = warnLists
+    this.interval = interval
+
+    this.start()
   }
 
-  async get(since?: Date) : Promise<[WarnItem[], Date?]> {
+  start() : void {
+    this.updateLocations()
+    setInterval(this.updateLocations.bind(this), this.interval)
+  }
+
+  async subscribe(ags: string, callback: SubscribeCallback, lastSent?: Date) : Promise<void> {
+    ags = this.cleanAgs(ags)
+
+    if (this.locations[ags]) {
+      this.locations[ags].subscriptions.push({ callback, lastSent })
+    } else {
+      this.locations[ags] = {
+        items: [],
+        subscriptions: [{ callback, lastSent }]
+      }
+    }
+
+    // FIXME Really update immediately on every subscribe?
+    await this.warnLists.update()
+    await this.updateLocation(ags, this.locations[ags])
+
+    this.logSubscriptions()
+  }
+
+  unsubscribe(ags: string, callback: SubscribeCallback) : void {
+    ags = this.cleanAgs(ags)
+
+    const callbackList = this.locations[ags].subscriptions
+    const index = callbackList.findIndex(cb => cb.callback === callback)
+    callbackList.splice(index, 1)
+
+    if (!callbackList.length)
+      delete this.locations[ags]
+
+    this.logSubscriptions()
+  }
+
+  private logSubscriptions() {
+    console.debug("subscriptions", Object.entries(this.locations).map(([ags, location]) => {
+      return [ags, location.subscriptions.map(s => s.lastSent)]
+    }))
+  }
+
+  private async updateLocation(ags: string, location: Location) {
+    const [items, lastSent] = await this.get(ags)
+    if (items.length) {
+      location.subscriptions.forEach(subscription => {
+        let updatedItems = items
+        if (subscription.lastSent)
+          updatedItems = updatedItems.filter(item => item.sent > subscription.lastSent!)
+
+        subscription.callback(updatedItems, lastSent)
+        subscription.lastSent = lastSent
+      })
+    }
+  }
+
+  private async updateLocations() {
+    await this.warnLists.update()
+
+    Object.keys(this.locations).forEach(async (ags) => {
+      await this.updateLocation(ags, this.locations[ags])
+    })
+  }
+
+  private async get(ags: string, since?: Date) : Promise<[MINAWarnItem[], Date?]> {
     const response = await fetch(
-      `https://warnung.bund.de/api31/dashboard/${this.ags}.json`,
+      `https://warnung.bund.de/api31/dashboard/${ags}.json`,
       {
         headers: {
           "Accept": "application/json"
         }
       }
     )
-    return await this.parseResponse(await response.json(), since)
+    return this.parseResponse(await response.json(), since)
   }
 
-  private async parseResponse(response: NinaResponse, since?: Date) : Promise<[WarnItem[], Date?]> {
+  private parseResponse(response: NinaResponse, since?: Date) : [MINAWarnItem[], Date?] {
     let lastSent: Date | undefined
 
     console.debug("nina response:", response)
@@ -117,19 +172,10 @@ export default class NinaWarnings {
     if (items.length)
       lastSent = new Date(items[items.length - 1].sent)
 
-    const warnItems = await Promise.all(items.map(async (item) => {
+    const warnItems = items.map((item) => {
       const provider = item.payload.data.provider
-      switch (provider) {
-      case "MOWAS":
-        return this.mapMowasData(item)
-      case "KATWARN":
-        return await this.mapKatwarnData(item)
-      case "DWD":
-        return this.mapDwdData(item)
-      default:
-        throw Error(`Unhandled provider ${provider}`)
-      } 
-    }))
+      return this.mapProviderData(provider, item)
+    })
     warnItems.sort((a, b) => a.sent.getTime() - b.sent.getTime())
 
     return [warnItems, lastSent]
@@ -141,80 +187,16 @@ export default class NinaWarnings {
     return (now - date.getTime()) / (1000 * 60 * 60 * 24)
   }
 
-  private mapMowasData(item: NinaResponseItemWithDates) : WarnItem {
+  private mapProviderData(provider: NinaProvider, item: NinaResponseItemWithDates) : MINAWarnItem {
     const data = item.payload.data
-    const mowasId = item.id.substr(4)
-    const mowasItem = this.warnLists.mowasItems.find((ds) => ds.identifier === mowasId)
+    const providerId = item.id.substr(4)
+    const providerItem = this.warnLists.feeds[provider].find((ds) => ds.identifier === providerId)
+
     console.debug("data", data)
-    console.debug("mowasItem", mowasItem)
+    console.debug("providerItem", providerItem)
 
-    if (mowasItem) {
-      const info = mowasItem.info[0]
-      console.debug("mowasItem area", Object.keys(info.area[0]))
-      return {
-        event: info.event,
-        headline: data.headline,
-        description: info.description,
-        instruction: info.instruction,
-        msgType: data.msgType,
-        provider: data.provider,
-        urgency: info.urgency,
-        severity: data.severity,
-        certainty: info.certainty,
-        web: info.web,
-        areaDesc: this.areaDesc(info.area),
-        sent: item.sentDate
-      }
-    } else throw Error(`Mowas-Item for ${item.id} not found`)
-  }
-
-  private async mapKatwarnData(item: NinaResponseItemWithDates) : Promise<WarnItem> {
-    const data = item.payload.data
-    const katwarnItem = await this.getKatwarnItem(item.id)
-    console.debug("data", data)
-    if (katwarnItem) {
-      const info = katwarnItem.info[0]
-      console.debug("katwarnitem", katwarnItem)
-      return {
-        headline: data.headline,
-        description: info.description,
-        instruction: info.instruction,
-        event: info.event,
-        // senderName: info.senderName,
-        urgency: info.urgency,
-        severity: info.severity,
-        certainty: info.certainty,
-        msgType: data.msgType,
-        provider: data.provider,
-        areaDesc: this.areaDesc(info.area),
-        sent: item.sentDate,
-        effective: new Date(info.effective)
-      }
-    } else throw Error(`Katwarn-Item for ${item.id} not found`)
-  }
-
-  private async getKatwarnItem(fullId: string) : Promise<KatwarnItem> {
-    const id = fullId.substr(4)
-    const response = await fetch(
-      `https://warnung.bund.de/bbk.katwarn/${id}.json`,
-      {
-        headers: {
-          "Accept": "application/json"
-        }
-      }
-    )
-    return await response.json()
-  }
-
-  private mapDwdData(item: NinaResponseItemWithDates) : WarnItem {
-    const data = item.payload.data
-    const dwdId = item.id.substr(4)
-    const dwdItem = this.warnLists.dwdItems.find((item) => item.identifier === dwdId)
-    console.debug("data", data)
-    console.debug("dwdItem", dwdItem)
-
-    if (dwdItem) {
-      const info = dwdItem.info[0]
+    if (providerItem) {
+      const info = providerItem.info[0]
       return {
         event: info.event,
         headline: data.headline,
@@ -232,10 +214,14 @@ export default class NinaWarnings {
         onset: info.onset ? new Date(info.onset) : undefined,
         expires: info.expires ? new Date(info.expires) : undefined
       }
-    } else throw Error(`Dwd-Item for ${item.id} not found`)
+    } else throw Error(`Provider-Item for ${provider} ${item.id} not found`)
   }
 
   private areaDesc(areas: NinaArea[]) : string {
     return areas.map((area) => area.areaDesc).join(", ")
+  }
+
+  private cleanAgs(ags: string) : string {
+    return ags.slice(0, -7) + "0000000"
   }
 }

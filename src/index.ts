@@ -1,6 +1,6 @@
 import { AutojoinRoomsMixin, MatrixClient, MessageEvent, RichReply, SimpleFsStorageProvider, TextualMessageEventContent } from "matrix-bot-sdk"
 import AGSSearch from "./ags"
-import NinaWarnings from "./nina_api"
+import NinaWarnings, { MINAWarnItem } from "./nina_api"
 import WarnLists from "./warn_lists"
 
 const homeserverUrl = process.env.HOMESERVER_URL // make sure to update this with your url
@@ -27,12 +27,13 @@ type LastSentEvent = {
 type RoomLocation = {
   id: string
   location: Location
-  timer?: NodeJS.Timer
+  callback?: () => void
 }
 
 const rooms: RoomLocation[] = []
 const agsSearch = new AGSSearch()
 const warnLists = new WarnLists()
+const warnings = new NinaWarnings(warnLists, INTERVAL)
 
 client.start().then(() => console.log("Client started!"))
 
@@ -85,12 +86,6 @@ client.on("room.message", async (roomId, ev: MessageEvent<any>) => {
 })
 
 async function setupRooms(matrixRooms: string[]) {
-  await warnLists.update()
-
-  setInterval(async () => {
-    await warnLists.update()
-  }, INTERVAL - 10 * 1000)
-
   matrixRooms.forEach(async (roomId) => {
     if (await joinedMembers(roomId) < 2) {
       console.debug(`Leaving room ${roomId} since there are fewer than 2 members`)
@@ -137,31 +132,20 @@ async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []>
   return []
 }
 
-async function setupRoom(roomLocation: RoomLocation, since?: Date) {
+async function setupRoom(roomLocation: RoomLocation, lastSent?: Date) {
   rooms.push(roomLocation)
   console.log("added room location:", roomLocation)
-  let previousLastSent = since
-  let lastSent: Date | undefined
 
-  const warnings = new NinaWarnings(roomLocation.location.code, warnLists)
+  const callback = async (items: MINAWarnItem[], lastSent?: Date) => {
+    loadWarnings(roomLocation, items)
 
-  const loadAndSave = async () => {
-    lastSent = await loadWarnings(roomLocation, warnings, previousLastSent)
-    if (lastSent && (!previousLastSent || lastSent > previousLastSent)) {
+    if (lastSent)
       await saveLastSent(roomLocation.id, lastSent)
-      previousLastSent = lastSent
-    }
   }
-
-  await loadAndSave()
-
-  roomLocation.timer = setInterval(async () => {
-    await loadAndSave()
-  }, INTERVAL)
+  warnings.subscribe(roomLocation.location.code, callback, lastSent)
 }
 
-async function loadWarnings(roomLocation: RoomLocation, warnings: NinaWarnings, since?: Date) : Promise<Date | undefined> {
-  const [items, lastSent] = await warnings.get(since)
+function loadWarnings(roomLocation: RoomLocation, items: MINAWarnItem[]) : void {
   items.forEach((item) => {
     const date = localizedDateAndTime(item.sent)
     const data = [date, item.msgType, item.urgency, item.severity, item.certainty, item.provider]
@@ -203,8 +187,6 @@ async function loadWarnings(roomLocation: RoomLocation, warnings: NinaWarnings, 
   if (items.length > 0) {
     console.debug(`Warned about ${items.length} items for location ${roomLocation.location.name} in room ${roomLocation.id}`)
   }
-
-  return lastSent
 }
 
 async function saveLastSent(roomId: string, lastSent: Date) {
@@ -273,7 +255,10 @@ async function search(roomId: string, event: MessageEvent<TextualMessageEventCon
 }
 
 async function subscribe(roomId: string, event: MessageEvent<TextualMessageEventContent>, locationCode: string) {
-  await warnLists.update()
+  const room = rooms.find((r) => r.id === roomId)
+  if (room)
+    warnings.unsubscribe(room.location.code, room.callback!)
+
   await agsSearch.update()
 
   const location = agsSearch.get(locationCode)
@@ -313,9 +298,11 @@ async function subscribe(roomId: string, event: MessageEvent<TextualMessageEvent
 async function unsubscribe(roomId: string, event: MessageEvent<TextualMessageEventContent>) {
   const room = rooms.find((r) => r.id === roomId)
   if (room) {
-    if (room.timer) clearInterval(room.timer)
+    warnings.unsubscribe(room.location.code, room.callback!)
+
     client.sendStateEvent(roomId, LOCATION_EVENT_TYPE, "", {})
     client.sendStateEvent(roomId, LAST_SENT_TYPE, "", {})
+
     rooms.splice(rooms.indexOf(room), 1)
 
     const replyBody = `Okay, ab sofort erhältst du keine Warnungen mehr für <i>${room.location.name}</i>.`
