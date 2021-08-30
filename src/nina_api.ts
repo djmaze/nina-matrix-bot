@@ -168,10 +168,8 @@ export default class NinaWarnings {
       .filter((item) => item.payload.version >= 2)
       .map<NinaResponseItemWithDates>((item) => ({ ...item, sentDate: new Date(item.sent) }))
       .filter((item) => {
-        const sent = new Date(item.sent)
-        return (!since || sent > since) && this.daysSince(sent) < DAYS_SINCE
+        return (!since || item.sentDate > since) && this.daysSince(item.sentDate) < DAYS_SINCE
       })
-      .sort((a, b) => a.sentDate.getTime() - b.sentDate.getTime())
 
     if (items.length)
       lastSent = new Date(items[items.length - 1].sent)
@@ -182,7 +180,6 @@ export default class NinaWarnings {
         throw `Unknown provider ${provider}`
       return this.mapProviderData(provider, item)
     })
-    warnItems.sort((a, b) => a.sent.getTime() - b.sent.getTime())
 
     return [warnItems, lastSent]
   }

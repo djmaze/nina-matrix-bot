@@ -139,7 +139,7 @@ async function setupRoom(roomLocation: RoomLocation, lastSent?: Date) {
   console.log("added room location:", roomLocation)
 
   const callback = async (items: MINAWarnItem[], lastSent?: Date) => {
-    loadWarnings(roomLocation, items)
+    await sendWarnings(roomLocation, items)
 
     if (lastSent)
       await saveLastSent(roomLocation.id, lastSent)
@@ -147,8 +147,8 @@ async function setupRoom(roomLocation: RoomLocation, lastSent?: Date) {
   warnings.subscribe(roomLocation.location.code, callback, lastSent)
 }
 
-function loadWarnings(roomLocation: RoomLocation, items: MINAWarnItem[]) : void {
-  items.forEach((item) => {
+async function sendWarnings(roomLocation: RoomLocation, items: MINAWarnItem[]) : Promise<void> {
+  for(const item of items) {
     const date = localizedDateAndTime(item.sent)
     const data = [date, item.msgType, item.urgency, item.severity, item.certainty, item.provider]
       .join(" | ")
@@ -183,8 +183,8 @@ function loadWarnings(roomLocation: RoomLocation, items: MINAWarnItem[]) : void 
       html += `<p>${item.instruction}</p>`
     if (item.web)
       html += `<p><a href="${item.web}">${item.web}</a></p>`
-    client.sendHtmlText(roomLocation.id, html)
-  })
+    await client.sendHtmlText(roomLocation.id, html)
+  }
 
   if (items.length > 0) {
     console.debug(`Warned about ${items.length} items for location ${roomLocation.location.name} in room ${roomLocation.id}`)
