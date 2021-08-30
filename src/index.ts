@@ -111,7 +111,7 @@ async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []>
   try {
     location = await client.getRoomStateEvent(roomId, LOCATION_EVENT_TYPE, "")
   } catch (e) {
-    if (e.body.errcode !== "M_NOT_FOUND")
+    if (!e.body || e.body.errcode !== "M_NOT_FOUND")
       throw e
   }
 
@@ -121,7 +121,7 @@ async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []>
     try {
       lastSentEvent = await client.getRoomStateEvent(roomId, LAST_SENT_TYPE, "")
     } catch (e) {
-      if (e.body.errcode !== "M_NOT_FOUND")
+      if (!e.body || e.body.errcode !== "M_NOT_FOUND")
         throw e
     }
     const lastSent = (lastSentEvent && lastSentEvent.value) ? new Date(lastSentEvent.value) : undefined
