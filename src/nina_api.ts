@@ -115,7 +115,7 @@ export default class NinaWarnings {
     this.logSubscriptions()
   }
 
-  private logSubscriptions() {
+  logSubscriptions() : void {
     console.debug("subscriptions", Object.entries(this.locations).map(([ags, location]) => {
       return [ags, location.subscriptions.map(s => s.lastSent)]
     }))

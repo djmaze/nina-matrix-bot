@@ -103,6 +103,8 @@ async function setupRooms(matrixRooms: string[]) {
         }, lastSent)
     }
   }))
+
+  warnings.logSubscriptions()
 }
 
 async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []> {
