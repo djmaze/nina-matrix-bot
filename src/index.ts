@@ -86,7 +86,7 @@ client.on("room.message", async (roomId, ev: MessageEvent<any>) => {
 })
 
 async function setupRooms(matrixRooms: string[]) {
-  matrixRooms.forEach(async (roomId) => {
+  await Promise.all(matrixRooms.map(async (roomId) => {
     if (await joinedMembers(roomId) < 2) {
       console.debug(`Leaving room ${roomId} since there are fewer than 2 members`)
       await client.leaveRoom(roomId)
@@ -94,7 +94,7 @@ async function setupRooms(matrixRooms: string[]) {
       const [location, lastSent] = await getStateForRoom(roomId)
 
       if (location)
-        setupRoom({
+        await setupRoom({
           id: roomId,
           location: {
             name: location.name,
@@ -102,7 +102,7 @@ async function setupRooms(matrixRooms: string[]) {
           }
         }, lastSent)
     }
-  })
+  }))
 }
 
 async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []> {
