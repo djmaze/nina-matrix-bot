@@ -122,7 +122,9 @@ export default class NinaWarnings {
   }
 
   private async updateLocation(ags: string, location: Location) {
-    const [items, lastSent] = await this.get(ags)
+    const json = await this.get(ags)
+    const [items, lastSent] = this.parseResponse(json)
+
     if (items.length) {
       location.subscriptions.forEach(subscription => {
         let updatedItems = items
@@ -143,7 +145,7 @@ export default class NinaWarnings {
     })
   }
 
-  private async get(ags: string, since?: Date) : Promise<[MINAWarnItem[], Date?]> {
+  private async get(ags: string) : Promise<NinaResponse> {
     const response = await fetch(
       `https://warnung.bund.de/api31/dashboard/${ags}.json`,
       {
@@ -152,7 +154,7 @@ export default class NinaWarnings {
         }
       }
     )
-    return this.parseResponse(await response.json(), since)
+    return await response.json()
   }
 
   private parseResponse(response: NinaResponse, since?: Date) : [MINAWarnItem[], Date?] {
