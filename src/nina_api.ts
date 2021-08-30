@@ -6,7 +6,9 @@ const DAYS_SINCE = 365
 
 export type NinaMsgType = "Update"
 
-export type NinaProvider = "MOWAS" | "KATWARN" | "DWD" | "LHP"
+const ninaProviders = {"MOWAS": "", "KATWARN": "", "DWD": "", "LHP": ""}
+
+export type NinaProvider = keyof typeof ninaProviders
 
 export type NinaSeverity = "Minor" | "Unknown"
 
@@ -176,6 +178,8 @@ export default class NinaWarnings {
 
     const warnItems = items.map((item) => {
       const provider = item.payload.data.provider
+      if (!Object.prototype.hasOwnProperty.call(ninaProviders, provider))
+        throw `Unknown provider ${provider}`
       return this.mapProviderData(provider, item)
     })
     warnItems.sort((a, b) => a.sent.getTime() - b.sent.getTime())
