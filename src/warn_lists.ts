@@ -6,6 +6,7 @@ const FEEDS: Record<NinaProvider, string> = {
   "MOWAS": "https://warnung.bund.de/bbk.mowas/gefahrendurchsagen.json",
   "DWD": "https://warnung.bund.de/bbk.dwd/unwetter.json",
   "KATWARN": "https://warnung.bund.de/bbk.katwarn/warnmeldungen.json",
+  "LHP": "https://warnung.bund.de/bbk.lhp/hochwassermeldungen.json"
 }
 
 type WarnItem = {
@@ -36,7 +37,8 @@ export default class WarnLists {
   feeds: Record<NinaProvider, WarnItem[]> = {
     "MOWAS": [],
     "DWD": [],
-    "KATWARN": []
+    "KATWARN": [],
+    "LHP": []
   }
   loaded = false
 

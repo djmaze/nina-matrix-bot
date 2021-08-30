@@ -6,7 +6,7 @@ const DAYS_SINCE = 365
 
 export type NinaMsgType = "Update"
 
-export type NinaProvider = "MOWAS" | "KATWARN" | "DWD"
+export type NinaProvider = "MOWAS" | "KATWARN" | "DWD" | "LHP"
 
 export type NinaSeverity = "Minor" | "Unknown"
 
