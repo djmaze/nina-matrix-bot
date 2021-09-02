@@ -18,8 +18,11 @@ export default class AGSSearch {
 
   search(searchedName: string) : AGSSearchResult[] {
     if (!this.items) return []
+
+    const regexp = new RegExp(searchedName, "i")
+
     return this.items
-      .filter(([_, name]) => name.includes(searchedName))
+      .filter(([_, name]) => regexp.test(name))
       .map(([code, name]) => {
         return { code, name }
       })
