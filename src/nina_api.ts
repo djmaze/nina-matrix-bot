@@ -6,7 +6,7 @@ const DAYS_SINCE = 365
 
 export type NinaMsgType = "Update"
 
-const ninaProviders = {"MOWAS": "", "KATWARN": "", "DWD": "", "LHP": ""}
+const ninaProviders = {"MOWAS": "", "KATWARN": "", "DWD": "", "LHP": "", "BIWAPP": ""}
 
 export type NinaProvider = keyof typeof ninaProviders
 
