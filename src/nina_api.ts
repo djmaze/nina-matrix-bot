@@ -174,12 +174,14 @@ export default class NinaWarnings {
     if (items.length)
       lastSent = new Date(items[items.length - 1].sent)
 
-    const warnItems = items.map((item) => {
-      const provider = item.payload.data.provider
-      if (!Object.prototype.hasOwnProperty.call(ninaProviders, provider))
-        throw `Unknown provider ${provider}`
-      return this.mapProviderData(provider, item)
-    })
+    const warnItems = items
+      .map((item) => {
+        const provider = item.payload.data.provider
+        if (!Object.prototype.hasOwnProperty.call(ninaProviders, provider))
+          console.error(`Unknown provider ${provider}`)
+        return this.mapProviderData(provider, item)
+      })
+      .filter((item) => item) as MINAWarnItem[]
 
     return [warnItems, lastSent]
   }
@@ -190,7 +192,7 @@ export default class NinaWarnings {
     return (now - date.getTime()) / (1000 * 60 * 60 * 24)
   }
 
-  private mapProviderData(provider: NinaProvider, item: NinaResponseItemWithDates) : MINAWarnItem {
+  private mapProviderData(provider: NinaProvider, item: NinaResponseItemWithDates) : MINAWarnItem | undefined {
     const data = item.payload.data
     const providerId = item.id.substr(4)
     const providerItem = this.warnLists.feeds[provider].find((ds) => ds.identifier === providerId)
@@ -217,7 +219,7 @@ export default class NinaWarnings {
         onset: info.onset ? new Date(info.onset) : undefined,
         expires: info.expires ? new Date(info.expires) : undefined
       }
-    } else throw Error(`Provider-Item for ${provider} ${item.id} not found`)
+    } else console.error(`Provider-Item for ${provider} ${item.id} not found`)
   }
 
   private areaDesc(areas: NinaArea[]) : string {
