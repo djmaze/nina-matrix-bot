@@ -1,6 +1,6 @@
 import { AutojoinRoomsMixin, MatrixClient, MessageEvent, RichReply, SimpleFsStorageProvider, TextualMessageEventContent } from "matrix-bot-sdk"
 import AGSSearch from "./ags"
-import NinaWarnings, { MINAWarnItem } from "./nina_api"
+import NinaWarnings, { LastSent, MINAWarnItem } from "./nina_api"
 import WarnLists from "./warn_lists"
 
 const homeserverUrl = process.env.HOMESERVER_URL // make sure to update this with your url
@@ -21,7 +21,7 @@ type Location = {
 }
 
 type LastSentEvent = {
-  value: string
+  value: string | { date: string, id: string | undefined, hash: string | undefined }
 }
 
 type RoomLocation = {
@@ -107,7 +107,7 @@ async function setupRooms(matrixRooms: string[]) {
   warnings.logSubscriptions()
 }
 
-async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []> {
+async function getStateForRoom(roomId: string) : Promise<[Location, LastSent?] | []> {
   let location: Location | undefined
 
   try {
@@ -119,6 +119,7 @@ async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []>
 
   if (location && location.name) {
     let lastSentEvent: LastSentEvent | undefined
+    let lastSent: LastSent | undefined
 
     try {
       lastSentEvent = await client.getRoomStateEvent(roomId, LAST_SENT_TYPE, "")
@@ -126,7 +127,13 @@ async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []>
       if (!e.body || e.body.errcode !== "M_NOT_FOUND")
         throw e
     }
-    const lastSent = (lastSentEvent && lastSentEvent.value) ? new Date(lastSentEvent.value) : undefined
+    if (lastSentEvent && lastSentEvent.value) {
+      if (typeof lastSentEvent.value === "string") {
+        lastSent = { date: new Date(lastSentEvent.value), id: undefined, hash: undefined }
+      } else if (typeof(lastSentEvent.value) === "object") {
+        lastSent = { ...lastSentEvent.value, date: new Date(lastSentEvent.value.date) }
+      }
+    }
 
     return [location, lastSent]
   }
@@ -134,11 +141,11 @@ async function getStateForRoom(roomId: string) : Promise<[Location, Date?] | []>
   return []
 }
 
-async function setupRoom(roomLocation: RoomLocation, lastSent?: Date) {
+async function setupRoom(roomLocation: RoomLocation, lastSent?: LastSent) {
   rooms.push(roomLocation)
   console.log("added room location:", roomLocation)
 
-  const callback = async (items: MINAWarnItem[], lastSent?: Date) => {
+  const callback = async (items: MINAWarnItem[], lastSent?: LastSent) => {
     await sendWarnings(roomLocation, items)
 
     if (lastSent)
@@ -191,7 +198,7 @@ async function sendWarnings(roomLocation: RoomLocation, items: MINAWarnItem[]) :
   }
 }
 
-async function saveLastSent(roomId: string, lastSent: Date) {
+async function saveLastSent(roomId: string, lastSent: LastSent) {
   await client.sendStateEvent(roomId, LAST_SENT_TYPE, "", { value: lastSent })
 }
 

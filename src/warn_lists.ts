@@ -10,7 +10,7 @@ const FEEDS: Record<NinaProvider, string> = {
   "BIWAPP": "https://warnung.bund.de/bbk.biwapp/warnmeldungen.json"
 }
 
-type WarnItem = {
+export type WarnItem = {
   identifier: string
   sent: string
   status: NinaStatus

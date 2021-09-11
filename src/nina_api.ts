@@ -1,6 +1,7 @@
 import fetch from "node-fetch"
+import hash from "object-hash"
 
-import WarnLists from "./warn_lists"
+import WarnLists, { WarnItem } from "./warn_lists"
 
 const DAYS_SINCE = 365
 
@@ -45,6 +46,8 @@ type NinaArea = {
 }
 
 export type MINAWarnItem = {
+  id: string
+  hash: string
   headline: string
   description?: string
   instruction?: string
@@ -62,9 +65,11 @@ export type MINAWarnItem = {
   expires?: Date
 }
 
-type SubscribeCallback = (items: MINAWarnItem[], lastSent?: Date) => void
+type SubscribeCallback = (items: MINAWarnItem[], lastSent?: LastSent) => void
 
-type CallbackSubscription = { callback: SubscribeCallback, lastSent: Date | undefined }
+export type LastSent = { date: Date, id: string | undefined, hash: string | undefined }
+
+type CallbackSubscription = { callback: SubscribeCallback, lastSent: LastSent | undefined }
 
 type Location = { items: MINAWarnItem[], subscriptions: CallbackSubscription[] }
 
@@ -85,7 +90,7 @@ export default class NinaWarnings {
     setInterval(this.updateLocations.bind(this), this.interval)
   }
 
-  async subscribe(ags: string, callback: SubscribeCallback, lastSent?: Date) : Promise<void> {
+  async subscribe(ags: string, callback: SubscribeCallback, lastSent?: LastSent) : Promise<void> {
     ags = this.cleanAgs(ags)
 
     if (this.locations[ags]) {
@@ -125,16 +130,26 @@ export default class NinaWarnings {
 
   private async updateLocation(ags: string, location: Location) {
     const json = await this.get(ags)
-    const [items, lastSent] = this.parseResponse(json)
+    const [items, providerLastSent] = this.parseResponse(json)
 
     if (items.length) {
       location.subscriptions.forEach(subscription => {
+        const subscriptionLastSent = subscription.lastSent
         let updatedItems = items
-        if (subscription.lastSent)
-          updatedItems = updatedItems.filter(item => item.sent > subscription.lastSent!)
 
-        subscription.callback(updatedItems, lastSent)
-        subscription.lastSent = lastSent
+        if (subscriptionLastSent) {
+          updatedItems = updatedItems.filter((item) => {
+            if (item.sent > subscriptionLastSent.date) {
+              console.debug(`CHECK ${item.id} === ${subscriptionLastSent.id} && ${item.hash} === ${subscriptionLastSent.hash}`)
+              if (item.id === subscriptionLastSent.id && item.hash === subscriptionLastSent.hash)
+                return false
+              return true
+            }
+          })
+        }
+
+        subscription.callback(updatedItems, providerLastSent)
+        subscription.lastSent = providerLastSent
       })
     }
   }
@@ -159,8 +174,8 @@ export default class NinaWarnings {
     return await response.json()
   }
 
-  private parseResponse(response: NinaResponse, since?: Date) : [MINAWarnItem[], Date?] {
-    let lastSent: Date | undefined
+  private parseResponse(response: NinaResponse, since?: LastSent) : [MINAWarnItem[], LastSent?] {
+    let lastSent: LastSent | undefined
 
     console.debug("nina response:", response)
 
@@ -168,11 +183,8 @@ export default class NinaWarnings {
       .filter((item) => item.payload.version >= 2)
       .map<NinaResponseItemWithDates>((item) => ({ ...item, sentDate: new Date(item.sent) }))
       .filter((item) => {
-        return (!since || item.sentDate > since) && this.daysSince(item.sentDate) < DAYS_SINCE
+        return (!since || item.sentDate > since.date) && this.daysSince(item.sentDate) < DAYS_SINCE
       })
-
-    if (items.length)
-      lastSent = new Date(items[items.length - 1].sent)
 
     const warnItems = items
       .map((item) => {
@@ -182,6 +194,12 @@ export default class NinaWarnings {
         return this.mapProviderData(provider, item)
       })
       .filter((item) => item) as MINAWarnItem[]
+
+    if (warnItems.length) {
+      const lastItem = warnItems[warnItems.length - 1]
+      lastSent = { date: lastItem.sent, id: lastItem.id, hash: lastItem.hash }
+    }
+
 
     return [warnItems, lastSent]
   }
@@ -203,6 +221,8 @@ export default class NinaWarnings {
     if (providerItem) {
       const info = providerItem.info[0]
       return {
+        id: item.id,
+        hash: this.hashWarnItem(providerItem),
         event: info.event,
         headline: data.headline,
         description: info.description,
@@ -228,5 +248,13 @@ export default class NinaWarnings {
 
   private cleanAgs(ags: string) : string {
     return ags.slice(0, -7) + "0000000"
+  }
+
+  private hashWarnItem(item: WarnItem) : string {
+    return hash(item, {
+      excludeKeys: (key: string) : boolean => {
+        return ["identifier", "sent", "effective"].includes(key)
+      }
+    })
   }
 }
