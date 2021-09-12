@@ -1,4 +1,6 @@
 import { AutojoinRoomsMixin, MatrixClient, MessageEvent, RichReply, SimpleFsStorageProvider, TextualMessageEventContent } from "matrix-bot-sdk"
+import AdminLogger from "./admin_logger"
+import AdminRoom from "./admin_room"
 import AGSSearch from "./ags"
 import NinaWarnings, { LastSent, MINAWarnItem } from "./nina_api"
 import WarnLists from "./warn_lists"
@@ -7,6 +9,7 @@ const homeserverUrl = process.env.HOMESERVER_URL // make sure to update this wit
 const accessToken = process.env.ACCESS_TOKEN
 const INTERVAL = parseInt(process.env.INTERVAL_MINUTES || "10") * 60 * 1000
 const FEEDBACK_ROOM = process.env.FEEDBACK_ROOM
+const ADMIN_ROOM_ID = process.env.ADMIN_ROOM_ID
 
 const LOCATION_EVENT_TYPE = "de.nina-bot.location"
 const LAST_SENT_TYPE = "de.nina-bot.last-sent"
@@ -33,17 +36,36 @@ type RoomLocation = {
 const rooms: RoomLocation[] = []
 const agsSearch = new AGSSearch()
 const warnLists = new WarnLists()
-const warnings = new NinaWarnings(warnLists, INTERVAL)
+const logger = new AdminLogger()
+const warnings = new NinaWarnings(warnLists, INTERVAL, logger)
 
 client.start().then(() => console.log("Client started!"))
 
 client.getJoinedRooms().then(async (matrixRooms) => {
-  console.debug("joined rooms", matrixRooms)
+  console.debug("got joined rooms", matrixRooms)
+
+  if (ADMIN_ROOM_ID) {
+    const adminRoom = new AdminRoom(client, ADMIN_ROOM_ID)
+    logger.adminRoom = adminRoom
+
+    console.debug(`Listening in admin room ${ADMIN_ROOM_ID}`)
+    adminRoom.listen()
+
+    if (!matrixRooms.includes(ADMIN_ROOM_ID)) {
+      console.debug(`Joining admin room ${ADMIN_ROOM_ID}`)
+      await adminRoom.join()
+    }
+  }
+
+  logger.info("Started")
 
   await setupRooms(matrixRooms)
+  logger.info("Set up all rooms")
 })
 
 client.on("room.event", async (roomId, event) => {
+  if (roomId === ADMIN_ROOM_ID) return
+
   if (event.type === "m.room.create") {
     console.debug("room just created, sending welcome message", roomId)
     await showHelp(roomId)
@@ -58,6 +80,8 @@ client.on("room.event", async (roomId, event) => {
 })
 
 client.on("room.message", async (roomId, ev: MessageEvent<any>) => {
+  if (roomId === ADMIN_ROOM_ID) return
+
   const event = new MessageEvent<TextualMessageEventContent>(ev)
   if (event.isRedacted) return
   if (!event.textBody) return

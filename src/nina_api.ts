@@ -1,5 +1,6 @@
 import fetch from "node-fetch"
 import hash from "object-hash"
+import AdminLogger from "./admin_logger"
 
 import WarnLists, { WarnItem } from "./warn_lists"
 
@@ -77,10 +78,12 @@ export default class NinaWarnings {
   warnLists: WarnLists
   interval: number
   locations: Record<string, Location> = {}
+  logger: AdminLogger
 
-  constructor(warnLists: WarnLists, interval: number) {
+  constructor(warnLists: WarnLists, interval: number, logger: AdminLogger) {
     this.warnLists = warnLists
     this.interval = interval
+    this.logger = logger
 
     this.start()
   }
@@ -190,7 +193,7 @@ export default class NinaWarnings {
       .map((item) => {
         const provider = item.payload.data.provider
         if (!Object.prototype.hasOwnProperty.call(ninaProviders, provider))
-          console.error(`Unknown provider ${provider}`)
+          this.logger.error(`Unknown provider ${provider}`)
         return this.mapProviderData(provider, item)
       })
       .filter((item) => item) as MINAWarnItem[]
@@ -239,7 +242,7 @@ export default class NinaWarnings {
         onset: info.onset ? new Date(info.onset) : undefined,
         expires: info.expires ? new Date(info.expires) : undefined
       }
-    } else console.error(`Provider-Item for ${provider} ${item.id} not found`)
+    } else this.logger.error(`Provider-Item for ${provider} ${item.id} not found`)
   }
 
   private areaDesc(areas: NinaArea[]) : string {
