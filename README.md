@@ -68,6 +68,8 @@ docker run \
 
 - Die Zuordnung des gewählten Raums zum jeweiligen Chat-Raum wird als _Room state_ im jeweiligen Matrix-Raum gespeichert. (Auch die zuletzt gepostete Warnung wird dort hinterlegt). Aus diesem Grund benötigt der Bot Moderatorenrechte. (Dies kann möglicherweise in Zukunft anders gelöst werden.)
 - Die Häufigkeit der Abfrage der Warnmeldungen wird über die Env-Variable `INTERVAL_MINUTES` festgelegt.
+- Über die Variable `FEEDBACK_ROOM` kann man einen Matrix-Raum angeben, der vom Hilfe-Befehl als Support-Channel angezeigt bzw. verlinkt wird.
+- Man kann einen (unverschlüsselten) Admin-Raum anlegen und den Bot dahin einladen. Die ID des Raums muss man dann in der Variable `ADMIN_ROOM_ID` hinterlegen. In diesem Raum postet der Bot dann automatisch verschiedene Statusmeldungen.
 
 ## Lizenz
 
