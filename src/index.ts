@@ -60,6 +60,7 @@ client.getJoinedRooms().then(async (matrixRooms) => {
   logger.info("Started")
 
   await setupRooms(matrixRooms)
+  await warnings.start()
   logger.info("Set up all rooms")
 })
 
@@ -169,13 +170,11 @@ async function setupRoom(roomLocation: RoomLocation, lastSent?: LastSent) {
   rooms.push(roomLocation)
   console.log("added room location:", roomLocation)
 
-  const callback = async (items: MINAWarnItem[], lastSent?: LastSent) => {
-    await sendWarnings(roomLocation, items)
-
-    if (lastSent)
-      await saveLastSent(roomLocation.id, lastSent)
+  const callback = async (item: MINAWarnItem) => {
+    await sendWarnings(roomLocation, [item])
+    await saveLastSent(roomLocation.id, { date: item.sent, id: item.id, hash: item.hash })
   }
-  warnings.subscribe(roomLocation.location.code, callback, lastSent)
+  warnings.subscribe(roomLocation.location.code, callback, lastSent, true)
 }
 
 async function sendWarnings(roomLocation: RoomLocation, items: MINAWarnItem[]) : Promise<void> {
@@ -319,7 +318,7 @@ async function subscribe(roomId: string, event: MessageEvent<TextualMessageEvent
   reply["msgtype"] = "m.notice"
   client.sendMessage(roomId, reply)
 
-  setupRoom({
+  await setupRoom({
     id: roomId,
     location: {
       name: location.name,

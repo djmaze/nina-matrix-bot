@@ -1,10 +1,6 @@
-import fetch from "node-fetch"
-import hash from "object-hash"
 import AdminLogger from "./admin_logger"
 
-import WarnLists, { WarnItem } from "./warn_lists"
-
-const DAYS_SINCE = 365
+import WarnLists, { HashedWarnItem, WarnItem } from "./warn_lists"
 
 export type NinaMsgType = "Update"
 
@@ -19,28 +15,6 @@ export type NinaUrgency = "Immediate" | "Unknown"
 export type NinaCertainty = "Observed"
 
 export type NinaStatus = "Actual"
-
-type NinaResponseItemData = {
-  headline: string
-  msgType: NinaMsgType
-  provider: NinaProvider
-  severity: NinaSeverity
-}
-
-type NinaResponseItem = {
-  id: string
-  payload: {
-    version: number
-    data: NinaResponseItemData
-  }
-  sent: string
-}
-
-type NinaResponseItemWithDates = NinaResponseItem & {
-  sentDate: Date
-}
-
-type NinaResponse = NinaResponseItem[]
 
 type NinaArea = {
   areaDesc: string
@@ -66,7 +40,7 @@ export type MINAWarnItem = {
   expires?: Date
 }
 
-type SubscribeCallback = (items: MINAWarnItem[], lastSent?: LastSent) => void
+type SubscribeCallback = (item: MINAWarnItem) => void
 
 export type LastSent = { date: Date, id: string | undefined, hash: string | undefined }
 
@@ -84,43 +58,47 @@ export default class NinaWarnings {
     this.warnLists = warnLists
     this.interval = interval
     this.logger = logger
-
-    this.start()
   }
 
-  start() : void {
-    this.updateLocations()
-    setInterval(this.updateLocations.bind(this), this.interval)
+  async start() : Promise<void> {
+    await this.updateSubscriptions()
+    setInterval(this.updateSubscriptions.bind(this), this.interval)
   }
 
-  async subscribe(ags: string, callback: SubscribeCallback, lastSent?: LastSent) : Promise<void> {
+  async subscribe(ags: string, callback: SubscribeCallback, lastSent?: LastSent, warnNow = false) : Promise<void> {
+    const subscription = { callback, lastSent }
+
     ags = this.cleanAgs(ags)
 
     if (this.locations[ags]) {
-      this.locations[ags].subscriptions.push({ callback, lastSent })
+      this.locations[ags].subscriptions.push(subscription)
     } else {
       this.locations[ags] = {
         items: [],
-        subscriptions: [{ callback, lastSent }]
+        subscriptions: [subscription]
       }
     }
 
-    // FIXME Really update immediately on every subscribe?
-    await this.warnLists.update()
-    await this.updateLocation(ags, this.locations[ags])
+    if (warnNow) this.warnNow(ags, subscription)
 
     this.logSubscriptions()
+  }
+
+  warnNow(ags: string, subscription: CallbackSubscription) : void {
+    this.warnLists.itemsForGeocode(ags).forEach(item => this.warn(subscription, item))
   }
 
   unsubscribe(ags: string, callback: SubscribeCallback) : void {
     ags = this.cleanAgs(ags)
 
-    const callbackList = this.locations[ags].subscriptions
-    const index = callbackList.findIndex(cb => cb.callback === callback)
-    callbackList.splice(index, 1)
+    if (this.locations[ags]) {
+      const callbackList = this.locations[ags].subscriptions
+      const index = callbackList.findIndex(cb => cb.callback === callback)
+      callbackList.splice(index, 1)
 
-    if (!callbackList.length)
-      delete this.locations[ags]
+      if (!callbackList.length)
+        delete this.locations[ags]
+    }
 
     this.logSubscriptions()
   }
@@ -131,118 +109,54 @@ export default class NinaWarnings {
     }))
   }
 
-  private async updateLocation(ags: string, location: Location) {
-    const json = await this.get(ags)
-    const [items, providerLastSent] = this.parseResponse(json)
-
-    if (items.length) {
-      location.subscriptions.forEach(subscription => {
-        const subscriptionLastSent = subscription.lastSent
-        let updatedItems = items
-
-        if (subscriptionLastSent) {
-          updatedItems = updatedItems.filter((item) => {
-            if (item.sent > subscriptionLastSent.date) {
-              console.debug(`CHECK ${item.id} === ${subscriptionLastSent.id} && ${item.hash} === ${subscriptionLastSent.hash}`)
-              if (item.id === subscriptionLastSent.id && item.hash === subscriptionLastSent.hash)
-                return false
-              return true
-            }
-          })
-        }
-
-        subscription.callback(updatedItems, providerLastSent)
-        subscription.lastSent = providerLastSent
+  private async updateSubscriptions() {
+    await this.warnLists.update(((item) => {
+      this.subscriptionsForItem(item).forEach(subscription => {
+        this.warn(subscription, item)
       })
+    }))
+  }
+
+  private warn(subscription: CallbackSubscription, item: HashedWarnItem) {
+    const subscriptionLastSent = subscription.lastSent
+    const sentDate = new Date(item.sent)
+
+    if (!subscriptionLastSent || ((sentDate > subscriptionLastSent.date) && (item.identifier !== subscriptionLastSent.id || item.hash !== subscriptionLastSent.hash))) {
+      subscription.callback(this.mapWarnItem(item))
+      subscription.lastSent = { date: sentDate, id: item.identifier, hash: item.hash }
     }
   }
 
-  private async updateLocations() {
-    await this.warnLists.update()
-
-    Object.keys(this.locations).forEach(async (ags) => {
-      await this.updateLocation(ags, this.locations[ags])
+  private subscriptionsForItem(item: WarnItem) : CallbackSubscription[] {
+    const geocodes = item.info.flatMap(info => info.area.flatMap(area => area.geocode.flatMap(geocode => geocode)))
+    return geocodes.flatMap(geocode => {
+      if(this.locations[geocode.value]) return this.locations[geocode.value].subscriptions
+      return []
     })
   }
 
-  private async get(ags: string) : Promise<NinaResponse> {
-    const response = await fetch(
-      `https://warnung.bund.de/api31/dashboard/${ags}.json`,
-      {
-        headers: {
-          "Accept": "application/json"
-        }
-      }
-    )
-    return await response.json()
-  }
+  private mapWarnItem(item: HashedWarnItem) : MINAWarnItem {
+    const info = item.info[0]
 
-  private parseResponse(response: NinaResponse, since?: LastSent) : [MINAWarnItem[], LastSent?] {
-    let lastSent: LastSent | undefined
-
-    console.debug("nina response:", response)
-
-    const items = response
-      .filter((item) => item.payload.version >= 2)
-      .map<NinaResponseItemWithDates>((item) => ({ ...item, sentDate: new Date(item.sent) }))
-      .filter((item) => {
-        return (!since || item.sentDate > since.date) && this.daysSince(item.sentDate) < DAYS_SINCE
-      })
-
-    const warnItems = items
-      .map((item) => {
-        const provider = item.payload.data.provider
-        if (!Object.prototype.hasOwnProperty.call(ninaProviders, provider))
-          this.logger.error(`Unknown provider ${provider}`)
-        return this.mapProviderData(provider, item)
-      })
-      .filter((item) => item) as MINAWarnItem[]
-
-    if (warnItems.length) {
-      const lastItem = warnItems[warnItems.length - 1]
-      lastSent = { date: lastItem.sent, id: lastItem.id, hash: lastItem.hash }
+    return {
+      id: item.identifier,
+      hash: item.hash,
+      event: info.event,
+      headline: info.headline,
+      description: info.description,
+      instruction: info.instruction,
+      msgType: item.msgType,
+      provider: item.provider,
+      urgency: info.urgency,
+      severity: info.severity,
+      certainty: info.certainty,
+      web: info.web,
+      areaDesc: this.areaDesc(info.area),
+      sent: new Date(item.sent),
+      effective: info.effective ? new Date(info.effective) : undefined,
+      onset: info.onset ? new Date(info.onset) : undefined,
+      expires: info.expires ? new Date(info.expires) : undefined
     }
-
-
-    return [warnItems, lastSent]
-  }
-
-  private daysSince(date: Date) {
-    const now = new Date().getTime()
-
-    return (now - date.getTime()) / (1000 * 60 * 60 * 24)
-  }
-
-  private mapProviderData(provider: NinaProvider, item: NinaResponseItemWithDates) : MINAWarnItem | undefined {
-    const data = item.payload.data
-    const providerId = item.id.substr(4)
-    const providerItem = this.warnLists.feeds[provider].find((ds) => ds.identifier === providerId)
-
-    console.debug("data", data)
-    console.debug("providerItem", providerItem)
-
-    if (providerItem) {
-      const info = providerItem.info[0]
-      return {
-        id: item.id,
-        hash: this.hashWarnItem(providerItem),
-        event: info.event,
-        headline: data.headline,
-        description: info.description,
-        instruction: info.instruction,
-        msgType: data.msgType,
-        provider: data.provider,
-        urgency: info.urgency,
-        severity: data.severity,
-        certainty: info.certainty,
-        web: info.web,
-        areaDesc: this.areaDesc(info.area),
-        sent: item.sentDate,
-        effective: info.effective ? new Date(info.effective) : undefined,
-        onset: info.onset ? new Date(info.onset) : undefined,
-        expires: info.expires ? new Date(info.expires) : undefined
-      }
-    } else this.logger.error(`Provider-Item for ${provider} ${item.id} not found`)
   }
 
   private areaDesc(areas: NinaArea[]) : string {
@@ -251,13 +165,5 @@ export default class NinaWarnings {
 
   private cleanAgs(ags: string) : string {
     return ags.slice(0, -7) + "0000000"
-  }
-
-  private hashWarnItem(item: WarnItem) : string {
-    return hash(item, {
-      excludeKeys: (key: string) : boolean => {
-        return ["identifier", "sent", "effective"].includes(key)
-      }
-    })
   }
 }
