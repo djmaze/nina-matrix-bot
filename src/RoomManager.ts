@@ -78,13 +78,15 @@ export default class RoomManager {
 
       if (event.type === "m.room.create") {
         console.debug("room create event", roomId, event)
-        room.roomCreated()
+        await room.roomCreated()
       } else if (event.content.membership === "leave") {
         console.debug("room leave event", roomId, event)
-        room.memberLeft()
+        await room.memberLeft()
       } else if (event.type === "m.room.member" && event.content.membership === "join" && event.sender === userId) {
-        console.debug("joined room", roomId)
-        room.entered()
+        if (!room.alreadyEntered) {
+          console.debug("joined room", roomId)
+          await room.entered()
+        }
       }
     })
 
@@ -111,7 +113,10 @@ export default class RoomManager {
 
     room = this.rooms[roomId]
     if (!room && roomId === this.settings.ADMIN_ROOM_ID && this.adminRoom) room = this.adminRoom
-    if (!room) room = new WarningRoom(this.client, roomId, this.warnings, this.settings, this.logger)
+    if (!room) {
+      room = new WarningRoom(this.client, roomId, this.warnings, this.settings, this.logger)
+      this.rooms[roomId] = room as WarningRoom
+    }
 
     return room
   }

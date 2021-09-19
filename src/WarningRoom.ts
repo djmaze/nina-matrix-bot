@@ -14,6 +14,7 @@ export default class WarningRoom implements Room {
   roomLocation?: RoomLocation
   commands: WarningCommands
   logger: AdminLogger
+  alreadyEntered = false
 
   constructor(client: MatrixClient, roomId: string, warnings: NinaWarnings, settings: Settings, logger: AdminLogger) {
     this.client = client
@@ -39,13 +40,14 @@ export default class WarningRoom implements Room {
     return false
   }
 
-  async roomCreated() : Promise<void> {
-    console.debug("room just created, sending welcome message", this.roomId)
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  async roomCreated() : Promise<void> {}
+
+  async entered() : Promise<void> {
+    console.debug("room just entered, sending welcome message", this.roomId)
+    this.alreadyEntered = true
     await this.commands.help.exec()
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  async entered() : Promise<void> {}
 
   async memberLeft() : Promise<void> {
     if (await this.joinedMembers() < 2) {

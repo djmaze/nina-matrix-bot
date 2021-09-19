@@ -4,6 +4,7 @@ import Room from "./Room"
 export default class AdminRoom implements Room {
   client: MatrixClient
   roomId: string
+  alreadyEntered = false
 
   constructor(client: MatrixClient, roomId: string) {
     this.client = client
@@ -33,6 +34,7 @@ export default class AdminRoom implements Room {
 
   async entered() : Promise<void> {
     console.debug("admin room just entered, sending welcome message", this.roomId)
+    this.alreadyEntered = true
     await this.showHelp()
   }
 

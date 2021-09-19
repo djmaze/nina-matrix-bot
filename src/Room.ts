@@ -3,6 +3,7 @@ import { MatrixClient, MessageEvent, TextualMessageEventContent } from "matrix-b
 export default abstract class Room {
   abstract roomId: string
   abstract client: MatrixClient
+  abstract alreadyEntered: boolean
 
   abstract roomCreated() : void
   abstract entered() : void
