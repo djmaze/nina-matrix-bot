@@ -31,6 +31,11 @@ export default class AdminRoom implements Room {
     await this.showHelp()
   }
 
+  async entered() : Promise<void> {
+    console.debug("admin room just entered, sending welcome message", this.roomId)
+    await this.showHelp()
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars,@typescript-eslint/no-empty-function
   async command(_body: string) : Promise<void> {}
 

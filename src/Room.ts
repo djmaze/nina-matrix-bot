@@ -5,6 +5,7 @@ export default abstract class Room {
   abstract client: MatrixClient
 
   abstract roomCreated() : void
+  abstract entered() : void
   abstract memberLeft() : void
   abstract command(body: string, event: MessageEvent<TextualMessageEventContent>) : Promise<void>
 }

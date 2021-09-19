@@ -43,7 +43,7 @@ export default class RoomManager {
 
     this.logger.info("All rooms set up")
 
-    this.setupEventHandlers()
+    await this.setupEventHandlers()
   }
 
   private async setupAdminRoom(matrixRooms: string[]) {
@@ -70,7 +70,9 @@ export default class RoomManager {
     this.warnings.logSubscriptions()
   }
 
-  private setupEventHandlers() {
+  private async setupEventHandlers() {
+    const userId = await this.client.getUserId()
+
     this.client.on("room.event", async (roomId, event) => {
       const room = this.getRoomById(roomId)
 
@@ -80,6 +82,9 @@ export default class RoomManager {
       } else if (event.content.membership === "leave") {
         console.debug("room leave event", roomId, event)
         room.memberLeft()
+      } else if (event.type === "m.room.member" && event.content.membership === "join" && event.sender === userId) {
+        console.debug("joined room", roomId)
+        room.entered()
       }
     })
 
