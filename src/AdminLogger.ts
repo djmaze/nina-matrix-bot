@@ -1,4 +1,4 @@
-import AdminRoom from "./admin_room"
+import AdminRoom from "./AdminRoom"
 
 export default class AdminLogger {
   adminRoom?: AdminRoom

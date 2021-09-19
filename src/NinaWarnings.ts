@@ -1,6 +1,6 @@
-import AdminLogger from "./admin_logger"
+import AdminLogger from "./AdminLogger"
 
-import WarnLists, { HashedWarnItem, WarnItem } from "./warn_lists"
+import WarnLists, { HashedWarnItem, WarnItem } from "./WarnLists"
 
 export type NinaMsgType = "Update"
 

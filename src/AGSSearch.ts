@@ -36,7 +36,7 @@ export default class AGSSearch {
       return { code: item[0], name: item[1] }
   }
 
-  async update() {
+  async update() : Promise<void> {
     const response = await fetch(
       "https://www.xrepository.de/api/xrepository/urn:de:bund:destatis:bevoelkerungsstatistik:schluessel:rs_2021-08-31/download/Regionalschl_ssel_2021-08-31.json",
       {

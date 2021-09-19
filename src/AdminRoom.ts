@@ -1,6 +1,7 @@
 import { MatrixClient } from "matrix-bot-sdk"
+import Room from "./Room"
 
-export default class AdminRoom {
+export default class AdminRoom implements Room {
   client: MatrixClient
   roomId: string
 
@@ -25,6 +26,16 @@ export default class AdminRoom {
       }
     })
   }
+
+  async roomCreated() : Promise<void> {
+    await this.showHelp()
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars,@typescript-eslint/no-empty-function
+  async command(_body: string) : Promise<void> {}
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  memberLeft() : void {}
 
   async showHelp() : Promise<void> {
     const text = "<p>Willkommen im Admin-Raum des MINA-Bots!"
