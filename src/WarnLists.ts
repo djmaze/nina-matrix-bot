@@ -1,7 +1,7 @@
 import fetch from "node-fetch"
 import hash from "object-hash"
 
-import { NinaCertainty, NinaMsgType, NinaProvider, NinaSeverity, NinaStatus, NinaUrgency } from "./nina_api"
+import { NinaCertainty, NinaMsgType, NinaProvider, NinaSeverity, NinaStatus, NinaUrgency } from "./NinaWarnings"
 
 const FEEDS: Record<NinaProvider, string> = {
   "MOWAS": "https://warnung.bund.de/bbk.mowas/gefahrendurchsagen.json",

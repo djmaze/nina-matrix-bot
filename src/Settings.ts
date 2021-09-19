@@ -1,9 +1,12 @@
-class Settings {
+export default class Settings {
   homeserverUrl: string
   accessToken: string
   INTERVAL: number
   FEEDBACK_ROOM?: string
   ADMIN_ROOM_ID?: string
+
+  LOCATION_EVENT_TYPE = "de.nina-bot.location"
+  LAST_SENT_TYPE = "de.nina-bot.last-sent"
 
   constructor(env: NodeJS.ProcessEnv) {
     function get(name: string, mandatory = false) {
@@ -18,7 +21,3 @@ class Settings {
     this.ADMIN_ROOM_ID = get("ADMIN_ROOM_ID")
   }
 }
-
-const settings = new Settings(process.env)
-
-export default settings
