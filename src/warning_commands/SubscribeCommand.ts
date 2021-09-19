@@ -38,6 +38,6 @@ export default class SubscribeCommand extends WarningCommand {
     await this.room.subscribe({
       name: location.name,
       code: locationCode
-    }, undefined)
+    }, undefined, false)
   }
 }

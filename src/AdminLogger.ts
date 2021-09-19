@@ -18,4 +18,10 @@ export default class AdminLogger {
       this.adminRoom.logError(message)
     console.error(message)
   }
+
+  debug(message: string) : void {
+    if (this.adminRoom)
+      this.adminRoom.logDebug(message)
+    console.debug(message)
+  }
 }

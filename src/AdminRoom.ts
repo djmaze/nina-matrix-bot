@@ -57,4 +57,8 @@ export default class AdminRoom implements Room {
   async logInfo(message: string) : Promise<void> {
     await this.client.sendText(this.roomId, `🏁 ${message}`)
   }
+
+  async logDebug(message: string) : Promise<void> {
+    await this.client.sendNotice(this.roomId, message)
+  }
 }

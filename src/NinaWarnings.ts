@@ -65,7 +65,7 @@ export default class NinaWarnings {
     setInterval(this.updateSubscriptions.bind(this), this.interval)
   }
 
-  async subscribe(ags: string, callback: SubscribeCallback, lastSent?: LastSent, warnNow = false) : Promise<void> {
+  async subscribe(ags: string, callback: SubscribeCallback, lastSent?: LastSent, warnNow = false, initialSubscribe = false) : Promise<void> {
     const subscription = { callback, lastSent }
 
     ags = this.cleanAgs(ags)
@@ -81,7 +81,7 @@ export default class NinaWarnings {
 
     if (warnNow) this.warnNow(ags, subscription)
 
-    this.logSubscriptions()
+    if (!initialSubscribe) this.logSubscriptions()
   }
 
   warnNow(ags: string, subscription: CallbackSubscription) : void {
@@ -104,9 +104,11 @@ export default class NinaWarnings {
   }
 
   logSubscriptions() : void {
-    console.debug("subscriptions", Object.entries(this.locations).map(([ags, location]) => {
+    const subscriptions = Object.entries(this.locations).map(([ags, location]) => {
       return [ags, location.subscriptions.map(s => s.lastSent)]
-    }))
+    })
+    console.debug("Subscriptions", subscriptions)
+    this.logger.debug(`Number of subscriptions: ${subscriptions.length}`)
   }
 
   private async updateSubscriptions() {

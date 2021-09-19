@@ -33,7 +33,7 @@ export default class WarningRoom implements Room {
       const [location, lastSent] = await this.getState()
 
       if (location) {
-        await this.subscribe(location, lastSent)
+        await this.subscribe(location, lastSent, true)
         return true
       }
     }
@@ -72,7 +72,7 @@ export default class WarningRoom implements Room {
     }
   }
 
-  async subscribe(location: Location, lastSent: LastSent | undefined) : Promise<void> {
+  async subscribe(location: Location, lastSent: LastSent | undefined, initialSubscribe: boolean) : Promise<void> {
     const callback = async (item: MINAWarnItem) => {
       await this.sendWarnings([item])
       await this.saveLastSent({ date: item.sent, id: item.id, hash: item.hash })
@@ -86,7 +86,7 @@ export default class WarningRoom implements Room {
       }
     }
 
-    this.warnings.subscribe(this.roomLocation.location.code, callback, lastSent, true)
+    this.warnings.subscribe(this.roomLocation.location.code, callback, lastSent, true, initialSubscribe)
   }
 
   unsubscribe() : void {
