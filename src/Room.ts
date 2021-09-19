@@ -7,6 +7,7 @@ export default abstract class Room {
 
   abstract roomCreated() : void
   abstract entered() : void
+  abstract left() : void
   abstract memberLeft() : void
   abstract command(body: string, event: MessageEvent<TextualMessageEventContent>) : Promise<void>
 }

@@ -42,6 +42,9 @@ export default class AdminRoom implements Room {
   async command(_body: string) : Promise<void> {}
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
+  left() : void {}
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   memberLeft() : void {}
 
   async showHelp() : Promise<void> {

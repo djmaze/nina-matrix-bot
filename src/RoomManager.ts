@@ -79,14 +79,25 @@ export default class RoomManager {
       if (event.type === "m.room.create") {
         console.debug("room create event", roomId, event)
         await room.roomCreated()
-      } else if (event.content.membership === "leave") {
-        console.debug("room leave event", roomId, event)
-        await room.memberLeft()
       } else if (event.type === "m.room.member" && event.content.membership === "join" && event.sender === userId) {
         if (!room.alreadyEntered) {
           console.debug("joined room", roomId)
           await room.entered()
         }
+      }
+    })
+
+    this.client.on("room.leave", async (roomId, event) => {
+      console.debug("room leave event", roomId, event)
+
+      const room = this.getRoomById(roomId)
+
+      if (event.state_key === userId) {
+        await room.left()
+        console.debug("Removing room from list", roomId)
+        delete this.rooms[roomId]
+      } else {
+        await room.memberLeft()
       }
     })
 

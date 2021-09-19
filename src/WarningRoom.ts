@@ -49,6 +49,12 @@ export default class WarningRoom implements Room {
     await this.commands.help.exec()
   }
 
+  async left() : Promise<void> {
+    console.debug("left the room, unsubscribing", this.roomId)
+    if (this.roomLocation)
+      this.unsubscribe()
+  }
+
   async memberLeft() : Promise<void> {
     if (await this.joinedMembers() < 2) {
       console.debug(`I am the last one left in room ${this.roomId}, leaving.`)
