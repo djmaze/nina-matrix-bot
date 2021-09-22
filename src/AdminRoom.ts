@@ -1,14 +1,18 @@
-import { MatrixClient } from "matrix-bot-sdk"
+import { MatrixClient, MessageEvent, TextualMessageEventContent } from "matrix-bot-sdk"
 import Room from "./Room"
+import commandsFor, { AdminCommands } from "./admin_commands"
+import RoomManager from "./RoomManager"
 
 export default class AdminRoom implements Room {
   client: MatrixClient
+  commands: AdminCommands
   roomId: string
   alreadyEntered = false
 
-  constructor(client: MatrixClient, roomId: string) {
+  constructor(client: MatrixClient, roomId: string, roomManager: RoomManager) {
     this.client = client
     this.roomId = roomId
+    this.commands = commandsFor(this, roomManager)
   }
 
   async join() : Promise<void> {
@@ -38,8 +42,18 @@ export default class AdminRoom implements Room {
     await this.showHelp()
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars,@typescript-eslint/no-empty-function
-  async command(_body: string) : Promise<void> {}
+  async command(body: string, event: MessageEvent<TextualMessageEventContent>) : Promise<void> {
+    const argIndex = body.indexOf(" ")
+    const arg = body.slice(argIndex + 1)
+
+    if (body.startsWith("!hilfe")) {
+      await this.commands.help.exec()
+    } else if (body.startsWith("!text")) {
+      await this.commands.text.exec(arg, event)
+    } else if (body.startsWith("!notice")) {
+      await this.commands.notice.exec(arg, event)
+    }
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   left() : void {}
@@ -48,9 +62,7 @@ export default class AdminRoom implements Room {
   memberLeft() : void {}
 
   async showHelp() : Promise<void> {
-    const text = "<p>Willkommen im Admin-Raum des MINA-Bots!"
-
-    await this.client.sendHtmlText(this.roomId, text)
+    await this.commands.help.exec()
   }
 
   async logError(message: string) : Promise<void> {

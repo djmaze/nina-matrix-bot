@@ -24,7 +24,7 @@ export default class RoomManager {
     this.warnings = new NinaWarnings(warnLists, settings.INTERVAL, logger)
 
     if (this.settings.ADMIN_ROOM_ID) {
-      this.adminRoom = new AdminRoom(this.client, this.settings.ADMIN_ROOM_ID)
+      this.adminRoom = new AdminRoom(this.client, this.settings.ADMIN_ROOM_ID, this)
       this.logger.adminRoom = this.adminRoom
     }
   }
@@ -44,6 +44,12 @@ export default class RoomManager {
     this.logger.info("All rooms set up")
 
     await this.setupEventHandlers()
+  }
+
+  eachRoom(cb: (roomId: string, room: WarningRoom) => void) : void {
+    Object.entries(this.rooms).forEach(([roomId, room]) => {
+      cb(roomId, room)
+    })
   }
 
   private async setupAdminRoom(matrixRooms: string[]) {
