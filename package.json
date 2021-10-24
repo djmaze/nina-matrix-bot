@@ -7,12 +7,14 @@
     "matrix-bot-sdk": "^0.5.19",
     "node-fetch": "^2.6.1",
     "object-hash": "^2.2.0",
+    "redis": "^4.0.0-rc.3",
     "typescript": "^4.3.5"
   },
   "devDependencies": {
     "@tsconfig/node14": "^1.0.1",
     "@types/node-fetch": "^2.5.12",
     "@types/object-hash": "^2.1.1",
+    "@types/redis": "^2.8.32",
     "@typescript-eslint/eslint-plugin": "^4.29.2",
     "@typescript-eslint/parser": "^4.29.2",
     "eslint": "^7.32.0"

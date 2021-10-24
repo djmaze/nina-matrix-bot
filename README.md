@@ -70,6 +70,7 @@ docker run \
 - Die Häufigkeit der Abfrage der Warnmeldungen wird über die Env-Variable `INTERVAL_MINUTES` festgelegt.
 - Über die Variable `FEEDBACK_ROOM` kann man einen Matrix-Raum angeben, der vom Hilfe-Befehl als Support-Channel angezeigt bzw. verlinkt wird.
 - Man kann einen (unverschlüsselten) Admin-Raum anlegen und den Bot dahin einladen. Die ID des Raums muss man dann in der Variable `ADMIN_ROOM_ID` hinterlegen. In diesem Raum postet der Bot dann automatisch verschiedene Statusmeldungen.
+- Der Sync-Status mit dem Matrix-Server wird standardmäßig in der lokalen Datei _bot.json_ gespeichert. Wenn eine Persistenz auf Dateisystem-Ebene nicht möglich ist, kann stattdessen ein Redis-Server benutzt werden. Dafür muss die Env-Variable `REDIS_URL` gesetzt werden (z.B. auf `redis://localhost`). Siehe auch das Beispiel in der _docker-compose.yml_. (Der Redis-Server selbst muss nicht zwingend für Persistenz konfiguriert werden. Wenn er neugestartet wird, schreibt der Bot bei der nächsten Verbindung sofort wieder alle Werte neu in Redis rein.)
 
 ## Lizenz
 
