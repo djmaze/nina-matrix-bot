@@ -1,5 +1,6 @@
 export default class Settings {
   homeserverUrl: string
+  redisUrl?: string
   accessToken: string
   INTERVAL: number
   FEEDBACK_ROOM?: string
@@ -15,6 +16,7 @@ export default class Settings {
     }
 
     this.homeserverUrl = get("HOMESERVER_URL", true)!
+    this.redisUrl = get("REDIS_URL", false)
     this.accessToken = get("ACCESS_TOKEN", true)!
     this.INTERVAL = parseInt(get("INTERVAL_MINUTES") || "10") * 60 * 1000
     this.FEEDBACK_ROOM = get("FEEDBACK_ROOM")

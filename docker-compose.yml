@@ -3,5 +3,12 @@ version: "3.7"
 services:
   app:
     build: .
+    environment:
+      REDIS_URL: redis://redis
     image: decentralize/nina-matrix-bot
     env_file: .env
+    # depends_on:
+    #   - redis
+
+  redis:
+    image: redis:6

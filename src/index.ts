@@ -1,10 +1,18 @@
-import { AutojoinRoomsMixin, MatrixClient, SimpleFsStorageProvider } from "matrix-bot-sdk"
+import { AutojoinRoomsMixin, IStorageProvider, MatrixClient, SimpleFsStorageProvider } from "matrix-bot-sdk"
 import AdminLogger from "./AdminLogger"
 import Settings from "./Settings"
 import RoomManager from "./RoomManager"
+import RedisStorageProvider from "./RedisStorageProvider"
+
+let storage: IStorageProvider
 
 const settings = new Settings(process.env)
-const storage = new SimpleFsStorageProvider("bot.json")
+
+if (settings.redisUrl)
+  storage = new RedisStorageProvider(settings.redisUrl)
+else
+  storage = new SimpleFsStorageProvider("bot.json")
+
 const client = new MatrixClient(settings.homeserverUrl, settings.accessToken, storage)
 AutojoinRoomsMixin.setupOnClient(client)
 const logger = new AdminLogger()
