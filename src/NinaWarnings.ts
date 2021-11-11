@@ -1,48 +1,13 @@
 import AdminLogger from "./AdminLogger"
+import { SubscribeCallback, LastSent, MINAWarnItem } from "./types"
 
 import WarnLists, { HashedWarnItem, WarnItem } from "./WarnLists"
 
-export type NinaMsgType = "Update"
-
-const ninaProviders = {"MOWAS": "", "KATWARN": "", "DWD": "", "LHP": "", "BIWAPP": ""}
-
-export type NinaProvider = keyof typeof ninaProviders
-
-export type NinaSeverity = "Minor" | "Unknown"
-
-export type NinaUrgency = "Immediate" | "Unknown"
-
-export type NinaCertainty = "Observed"
-
-export type NinaStatus = "Actual"
+export const NINA_PROVIDERS = {"MOWAS": "", "KATWARN": "", "DWD": "", "LHP": "", "BIWAPP": ""}
 
 type NinaArea = {
   areaDesc: string
 }
-
-export type MINAWarnItem = {
-  id: string
-  hash: string
-  headline: string
-  description?: string
-  instruction?: string
-  provider: NinaProvider
-  event?: string
-  urgency?: NinaUrgency
-  severity: NinaSeverity
-  certainty?: NinaCertainty
-  msgType: NinaMsgType
-  web?: string
-  areaDesc: string
-  sent: Date
-  effective?: Date
-  onset?: Date
-  expires?: Date
-}
-
-type SubscribeCallback = (item: MINAWarnItem) => void
-
-export type LastSent = { date: Date, id: string | undefined, hash: string | undefined }
 
 type CallbackSubscription = { callback: SubscribeCallback, lastSent: LastSent | undefined }
 
@@ -124,8 +89,15 @@ export default class NinaWarnings {
     const sentDate = new Date(item.sent)
 
     if (!subscriptionLastSent || ((sentDate > subscriptionLastSent.date) && (item.identifier !== subscriptionLastSent.id || item.hash !== subscriptionLastSent.hash))) {
-      subscription.callback(this.mapWarnItem(item))
-      subscription.lastSent = { date: sentDate, id: item.identifier, hash: item.hash }
+      const minaWarnItem = this.mapWarnItem(item)
+      subscription.callback(minaWarnItem, subscriptionLastSent)
+      subscription.lastSent = {
+        date: sentDate,
+        id: item.identifier,
+        onset: minaWarnItem.onset,
+        expires: minaWarnItem.expires,
+        hash: item.hash
+      }
     }
   }
 
