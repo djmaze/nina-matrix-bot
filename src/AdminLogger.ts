@@ -7,21 +7,33 @@ export default class AdminLogger {
     this.adminRoom = adminRoom
   }
 
-  info(message: string) : void {
-    if (this.adminRoom)
-      this.adminRoom.logInfo(message)
-    console.info(message)
+  async info(message: string) : Promise<void> {
+    try {
+      if (this.adminRoom)
+        await this.adminRoom.logInfo(message)
+    } 
+    finally {
+      console.info(message)
+    }
   }
 
-  error(message: string) : void {
-    if (this.adminRoom)
-      this.adminRoom.logError(message)
-    console.error(message)
+  async error(message: string) : Promise<void> {
+    try {
+      if (this.adminRoom)
+        await this.adminRoom.logError(message)
+    } 
+    finally {
+      console.error(message)
+    }
   }
 
-  debug(message: string) : void {
-    if (this.adminRoom)
-      this.adminRoom.logDebug(message)
-    console.debug(message)
+  async debug(message: string) : Promise<void> {
+    try {
+      if (this.adminRoom)
+        await this.adminRoom.logDebug(message)
+    }
+    finally {
+      console.debug(message)
+    }
   }
 }
