@@ -19,6 +19,16 @@ AutojoinRoomsMixin.setupOnClient(client)
 const logger = new AdminLogger()
 const roomManager = new RoomManager(client, settings, logger)
 
+process.on("uncaughtException", async (err) => {
+  try {
+    await logger.error(err.stack || err.message)
+    await logger.error("Exiting!")
+  }
+  finally {
+    process.exit(1)
+  }
+})
+
 client.start().then(async () => {
   console.log("Client started!")
   await roomManager.setupRooms()
