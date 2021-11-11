@@ -5,6 +5,8 @@ export default class Settings {
   INTERVAL: number
   FEEDBACK_ROOM?: string
   ADMIN_ROOM_ID?: string
+  HEALTHCHECK_URL?: string
+  HEALTHCHECK_PING_INTERVAL_IN_SECONDS?: number
 
   LOCATION_EVENT_TYPE = "de.nina-bot.location"
   LAST_SENT_TYPE = "de.nina-bot.last-sent"
@@ -21,5 +23,9 @@ export default class Settings {
     this.INTERVAL = parseInt(get("INTERVAL_MINUTES") || "10") * 60 * 1000
     this.FEEDBACK_ROOM = get("FEEDBACK_ROOM")
     this.ADMIN_ROOM_ID = get("ADMIN_ROOM_ID")
+    this.HEALTHCHECK_URL = get("HEALTHCHECK_URL")
+    if (this.HEALTHCHECK_URL) {
+      this.HEALTHCHECK_PING_INTERVAL_IN_SECONDS = parseInt(get("HEALTHCHECK_PING_INTERVAL_IN_SECONDS", true)!)
+    }
   }
 }
