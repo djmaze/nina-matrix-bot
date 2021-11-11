@@ -3,6 +3,7 @@ import AdminLogger from "./AdminLogger"
 import Settings from "./Settings"
 import RoomManager from "./RoomManager"
 import RedisStorageProvider from "./RedisStorageProvider"
+import HealthPing from "./health_ping"
 
 let storage: IStorageProvider
 
@@ -21,4 +22,6 @@ const roomManager = new RoomManager(client, settings, logger)
 client.start().then(async () => {
   console.log("Client started!")
   await roomManager.setupRooms()
+
+  new HealthPing(settings)
 })
