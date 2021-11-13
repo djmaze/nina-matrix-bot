@@ -114,7 +114,7 @@ export default class WarnLists {
   private hashWarnItem(item: WarnItem) : string {
     return hash(item, {
       excludeKeys: (key: string) : boolean => {
-        return ["identifier", "sent", "effective"].includes(key)
+        return ["identifier", "sent", "effective", "expires"].includes(key)
       }
     })
   }
