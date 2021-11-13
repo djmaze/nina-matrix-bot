@@ -1,10 +1,11 @@
 import { MatrixClient, MessageEvent, TextualMessageEventContent } from "matrix-bot-sdk"
 import commandsFor, { WarningCommands } from "./warning_commands"
-import NinaWarnings, { LastSent, MINAWarnItem } from "./NinaWarnings"
+import NinaWarnings from "./NinaWarnings"
 import Room from "./Room"
 import Settings from "./Settings"
-import { LastSentEvent, Location, RoomLocation } from "./types"
+import { LastSent, LastSentEvent, Location, MINAWarnItem, RoomLocation, SubscribeCallback } from "./types"
 import AdminLogger from "./AdminLogger"
+import checkWarningUpdated from "./checkWarningUpdated"
 
 export default class WarningRoom implements Room {
   client: MatrixClient
@@ -79,9 +80,27 @@ export default class WarningRoom implements Room {
   }
 
   async subscribe(location: Location, lastSent: LastSent | undefined, initialSubscribe: boolean) : Promise<void> {
-    const callback = async (item: MINAWarnItem) => {
-      await this.sendWarnings([item])
-      await this.saveLastSent({ date: item.sent, id: item.id, hash: item.hash })
+    const callback: SubscribeCallback = async (item, lastSent) => {
+      switch (checkWarningUpdated(item, lastSent)) {
+      case "new":
+      case "changed":
+        await this.sendWarnings([item])
+        break
+      case "extended":
+        console.debug("Sending same warning with different dates", item, lastSent)
+        await this.sendUpdate(item, lastSent!)
+        break
+      case "unchanged":
+        console.debug("Warning unchanged, skipping notification", item)
+        break
+      }
+      await this.saveLastSent({
+        date: item.sent,
+        id: item.id,
+        onset: item.onset,
+        expires: item.expires,
+        hash: item.hash
+      })
     }
 
     this.roomLocation = {
@@ -161,6 +180,21 @@ export default class WarningRoom implements Room {
     }
   }
 
+  private async sendUpdate(item: MINAWarnItem, lastSent: LastSent) {
+    if (!this.roomLocation) {
+      this.logger.error(`Room location in room ${this.roomId} not defined`)
+      return
+    }
+
+    if (item.expires) {
+      const until = localizedDateAndTime(item.expires)
+      const text = `Die Warnung <em>${item.headline}</em> wurde bis <em>${until}</em> verlängert.`
+      await this.client.sendHtmlNotice(this.roomLocation.id, text)
+    } else {
+      this.logger.error(`Don't know what to update with ${item} ${lastSent}`)
+    }
+  }
+
   private async saveLastSent(lastSent: LastSent) : Promise<void> {
     await this.client.sendStateEvent(this.roomId, this.settings.LAST_SENT_TYPE, "", { value: lastSent })
   }
@@ -187,9 +221,18 @@ export default class WarningRoom implements Room {
       }
       if (lastSentEvent && lastSentEvent.value) {
         if (typeof lastSentEvent.value === "string") {
-          lastSent = { date: new Date(lastSentEvent.value), id: undefined, hash: undefined }
+          lastSent = {
+            date: new Date(lastSentEvent.value),
+            id: undefined,
+            onset: undefined,
+            expires: undefined,
+            hash: undefined
+          }
         } else if (typeof(lastSentEvent.value) === "object") {
-          lastSent = { ...lastSentEvent.value, date: new Date(lastSentEvent.value.date) }
+          lastSent = {
+            ...lastSentEvent.value,
+            date: new Date(lastSentEvent.value.date)
+          }
         }
       }
 

@@ -1,7 +1,7 @@
 import fetch from "node-fetch"
 import hash from "object-hash"
 
-import { NinaCertainty, NinaMsgType, NinaProvider, NinaSeverity, NinaStatus, NinaUrgency } from "./NinaWarnings"
+import { NinaCertainty, NinaMsgType, NinaProvider, NinaSeverity, NinaStatus, NinaUrgency } from "./types"
 
 const FEEDS: Record<NinaProvider, string> = {
   "MOWAS": "https://warnung.bund.de/bbk.mowas/gefahrendurchsagen.json",
@@ -114,7 +114,7 @@ export default class WarnLists {
   private hashWarnItem(item: WarnItem) : string {
     return hash(item, {
       excludeKeys: (key: string) : boolean => {
-        return ["identifier", "sent", "effective"].includes(key)
+        return ["identifier", "sent", "effective", "expires"].includes(key)
       }
     })
   }
