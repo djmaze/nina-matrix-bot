@@ -16,6 +16,7 @@ export default class WarningRoom implements Room {
   commands: WarningCommands
   logger: AdminLogger
   alreadyEntered = false
+  lastSent?: LastSent
 
   constructor(client: MatrixClient, roomId: string, warnings: NinaWarnings, settings: Settings, logger: AdminLogger) {
     this.client = client
@@ -31,14 +32,26 @@ export default class WarningRoom implements Room {
       console.debug(`Leaving room ${this.roomId} since there are fewer than 2 members`)
       await this.client.leaveRoom(this.roomId)
     } else {
-      const [location, lastSent] = await this.getState()
+      const [location, lastSent] = await this.fetchRoomState()
+      this.lastSent = lastSent
 
       if (location) {
-        await this.subscribe(location, lastSent, true)
+        await this.subscribe(location, true)
         return true
       }
     }
     return false
+  }
+
+  async stateChanged(type: string, content: LastSentEvent) : Promise<void> {
+    switch(type) {
+    case this.settings.LAST_SENT_TYPE:
+      console.debug(`Got new last sent state in room ${this.roomId}:`, content)
+      this.lastSent  = this.mapLastSentEvent(content)
+      break
+    default:
+      console.debug(`Unknown state event type ${type}`, content)
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -79,19 +92,19 @@ export default class WarningRoom implements Room {
     }
   }
 
-  async subscribe(location: Location, lastSent: LastSent | undefined, initialSubscribe: boolean) : Promise<void> {
-    const callback: SubscribeCallback = async (item, lastSent) => {
-      switch (checkWarningUpdated(item, lastSent)) {
+  async subscribe(location: Location, initialSubscribe: boolean) : Promise<void> {
+    const callback: SubscribeCallback = async (item) => {
+      switch (checkWarningUpdated(item, this.lastSent)) {
       case "new":
       case "changed":
         await this.sendWarnings([item])
         break
       case "extended":
-        console.debug("Sending same warning with different dates", item, lastSent)
-        await this.sendUpdate(item, lastSent!)
+        console.debug("Sending same warning with different dates", item, this.lastSent)
+        await this.sendUpdate(item, this.lastSent!)
         break
       case "unchanged":
-        console.debug("Warning unchanged, skipping notification", item)
+        console.debug(`Warning ${item.id} unchanged, skipping notification`)
         break
       }
       await this.saveLastSent({
@@ -111,7 +124,7 @@ export default class WarningRoom implements Room {
       }
     }
 
-    this.warnings.subscribe(this.roomLocation.location.code, callback, lastSent, true, initialSubscribe)
+    this.warnings.subscribe(this.roomLocation.location.code, callback, true, initialSubscribe)
   }
 
   unsubscribe() : void {
@@ -196,15 +209,16 @@ export default class WarningRoom implements Room {
   }
 
   private async saveLastSent(lastSent: LastSent) : Promise<void> {
+    this.lastSent = lastSent
     await this.client.sendStateEvent(this.roomId, this.settings.LAST_SENT_TYPE, "", { value: lastSent })
   }
 
-  private async getState() : Promise<[Location, LastSent?] | []> {
+  private async fetchRoomState() : Promise<[Location, LastSent?] | []> {
     let location: Location | undefined
 
     try {
       location = await this.client.getRoomStateEvent(this.roomId, this.settings.LOCATION_EVENT_TYPE, "")
-    } catch (e) {
+    } catch (e: any) {
       if (!e.body || e.body.errcode !== "M_NOT_FOUND")
         throw e
     }
@@ -215,25 +229,12 @@ export default class WarningRoom implements Room {
 
       try {
         lastSentEvent = await this.client.getRoomStateEvent(this.roomId, this.settings.LAST_SENT_TYPE, "")
-      } catch (e) {
+      } catch (e: any) {
         if (!e.body || e.body.errcode !== "M_NOT_FOUND")
           throw e
       }
       if (lastSentEvent && lastSentEvent.value) {
-        if (typeof lastSentEvent.value === "string") {
-          lastSent = {
-            date: new Date(lastSentEvent.value),
-            id: undefined,
-            onset: undefined,
-            expires: undefined,
-            hash: undefined
-          }
-        } else if (typeof(lastSentEvent.value) === "object") {
-          lastSent = {
-            ...lastSentEvent.value,
-            date: new Date(lastSentEvent.value.date)
-          }
-        }
+        lastSent = this.mapLastSentEvent(lastSentEvent) 
       }
 
       return [location, lastSent]
@@ -247,6 +248,26 @@ export default class WarningRoom implements Room {
     return memberEvents
       .filter((event) => event.content.membership === "join")
       .length
+  }
+
+  private mapLastSentEvent(event: LastSentEvent) : LastSent {
+    const {value} = event
+    if (typeof value === "string") {
+      return {
+        date: new Date(value),
+        id: undefined,
+        onset: undefined,
+        expires: undefined,
+        hash: undefined
+      }
+    } else {
+      return {
+        ...value,
+        date: new Date(value.date),
+        expires: value.expires ? new Date(value.expires) : undefined,
+        onset: value.onset ? new Date(value.onset) : undefined,
+      }
+    }
   }
 }
 

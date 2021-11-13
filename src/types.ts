@@ -55,4 +55,4 @@ export type MINAWarnItem = {
 
 export type LastSent = { date: Date, id: string | undefined, onset: Date | undefined, expires: Date | undefined, hash: string | undefined }
 
-export type SubscribeCallback = (item: MINAWarnItem, lastSent: LastSent | undefined) => void
+export type SubscribeCallback = (item: MINAWarnItem) => void

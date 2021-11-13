@@ -69,7 +69,7 @@ export default class RoomManager {
       const room = new WarningRoom(this.client, roomId, this.warnings, this.settings, this.logger)
       if(await room.setup()) {
         this.rooms[room.roomId] = room
-        console.log("added room location:", room.roomLocation)
+        console.log("added room:", room.roomLocation, room.lastSent)
       }
     }))
 
@@ -90,6 +90,8 @@ export default class RoomManager {
           console.debug("joined room", roomId)
           await room.entered()
         }
+      } else if (!event.type.startsWith("m.") && event.sender !== userId) {
+        await room.stateChanged(event.type, event.content)
       }
     })
 

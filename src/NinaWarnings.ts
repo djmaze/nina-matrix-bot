@@ -9,7 +9,7 @@ type NinaArea = {
   areaDesc: string
 }
 
-type CallbackSubscription = { callback: SubscribeCallback, lastSent: LastSent | undefined }
+type CallbackSubscription = { callback: SubscribeCallback }
 
 type Location = { items: MINAWarnItem[], subscriptions: CallbackSubscription[] }
 
@@ -30,8 +30,8 @@ export default class NinaWarnings {
     setInterval(this.updateSubscriptions.bind(this), this.interval)
   }
 
-  async subscribe(ags: string, callback: SubscribeCallback, lastSent?: LastSent, warnNow = false, initialSubscribe = false) : Promise<void> {
-    const subscription = { callback, lastSent }
+  async subscribe(ags: string, callback: SubscribeCallback, warnNow = false, initialSubscribe = false) : Promise<void> {
+    const subscription = { callback }
 
     ags = this.cleanAgs(ags)
 
@@ -69,11 +69,7 @@ export default class NinaWarnings {
   }
 
   logSubscriptions() : void {
-    const subscriptions = Object.entries(this.locations).map(([ags, location]) => {
-      return [ags, location.subscriptions.map(s => s.lastSent)]
-    })
-    console.debug("Subscriptions", subscriptions)
-    this.logger.debug(`Number of subscriptions: ${subscriptions.length}`)
+    this.logger.debug(`Number of subscriptions: ${Object.keys(this.locations).length}`)
   }
 
   private async updateSubscriptions() {
@@ -85,20 +81,8 @@ export default class NinaWarnings {
   }
 
   private warn(subscription: CallbackSubscription, item: HashedWarnItem) {
-    const subscriptionLastSent = subscription.lastSent
-    const sentDate = new Date(item.sent)
-
-    if (!subscriptionLastSent || ((sentDate > subscriptionLastSent.date) && (item.identifier !== subscriptionLastSent.id || item.hash !== subscriptionLastSent.hash))) {
-      const minaWarnItem = this.mapWarnItem(item)
-      subscription.callback(minaWarnItem, subscriptionLastSent)
-      subscription.lastSent = {
-        date: sentDate,
-        id: item.identifier,
-        onset: minaWarnItem.onset,
-        expires: minaWarnItem.expires,
-        hash: item.hash
-      }
-    }
+    const minaWarnItem = this.mapWarnItem(item)
+    subscription.callback(minaWarnItem)
   }
 
   private subscriptionsForItem(item: WarnItem) : CallbackSubscription[] {

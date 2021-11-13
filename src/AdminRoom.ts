@@ -32,6 +32,9 @@ export default class AdminRoom implements Room {
     })
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars
+  async stateChanged(type: string, content: unknown) : Promise<void> {}
+
   async roomCreated() : Promise<void> {
     await this.showHelp()
   }
@@ -56,10 +59,10 @@ export default class AdminRoom implements Room {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  left() : void {}
+  async left() : Promise<void> {}
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  memberLeft() : void {}
+  async memberLeft() : Promise<void> {}
 
   async showHelp() : Promise<void> {
     await this.commands.help.exec()

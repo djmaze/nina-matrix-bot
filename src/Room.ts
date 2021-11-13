@@ -5,9 +5,10 @@ export default abstract class Room {
   abstract client: MatrixClient
   abstract alreadyEntered: boolean
 
-  abstract roomCreated() : void
-  abstract entered() : void
-  abstract left() : void
-  abstract memberLeft() : void
+  abstract stateChanged(type: string, content: unknown) : Promise<void>
+  abstract roomCreated() : Promise<void>
+  abstract entered() : Promise<void>
+  abstract left() : Promise<void>
+  abstract memberLeft() : Promise<void>
   abstract command(body: string, event: MessageEvent<TextualMessageEventContent>) : Promise<void>
 }
