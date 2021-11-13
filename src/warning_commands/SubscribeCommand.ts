@@ -28,7 +28,7 @@ export default class SubscribeCommand extends WarningCommand {
       this.room.client.sendMessage(this.room.roomId, reply)
       return
     }
-    console.log(`subscribed ${this.room.roomId} to ${locationCode}`)
+    console.log(`Subscribed ${this.room.roomId} to`, location)
     
     const replyBody = `Danke, du wirst jetzt für die Location <i>${location.name}</i> gewarnt`
     const reply = RichReply.createFor(this.room.roomId, event, replyBody, replyBody)
