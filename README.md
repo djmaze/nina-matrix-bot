@@ -75,6 +75,46 @@ docker run \
 
   In dem jeweiligen Monitoring-System legt man einen neuen Check an, kopiert dann die Ziel-URL und setzt dann bei MINA die Env-Variablen `HEALTHCHECK_URL` (Ziel-URL für den Ping) und `HEALTHCHECK_PING_INTERVAL_IN_SECONDS` (Ping-Interval in Sekunden) entsprechend.
 
+## Entwicklung
+
+### Voraussetzungen
+
+Es handelt sich um eine NodeJS-Anwendung. Installiert sein muss:
+
+- NodeJS (>= 14)
+
+### Einrichten
+
+Zur Einrichtung muss (analog zum normalen Setup) zuerst die Konfiguration festgelegt werden:
+
+1. `cp .env.example .env`
+2. `HOMESERVER_URL` und `ACCESS_TOKEN` in der Datei _.env_ hinterlegen. (Dafür braucht man einen Matrix-Account, siehe oben.)
+
+### Kompilieren und Ausführen
+
+Die TypeScript-Dateien müssen nach JavaScript kompiliert werden. In einem Terminal Folgendes ausführen:
+
+```bash
+npm run watch
+```
+
+In einem anderen Terminal kann nun parallel die App gestartet werden:
+
+```bash
+source .env
+npm start
+```
+
+Nach jeder Änderung im Sourcecode muss die App beendet und per `npm start` erneut gestartet werden.
+
+### Tests
+
+Es gibt automatisierte Tests, die mit Hilfe von [Jest](https://jestjs.io) implementiert wurden. Sie können über folgenden Befehl ausgeführt werden:
+
+```bash
+npm run test
+```
+
 ## Lizenz
 
 Damit diese Software nicht ähnlich unter Verschluss gerät wie die Warn-Schnittstellen des Bundes, wird der Code unter der AGPLv3 veröffentlicht.
